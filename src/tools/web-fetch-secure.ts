@@ -17,7 +17,8 @@ export function createSecureWebFetchWrapper(
     blockThreshold: number;
     warnThreshold: number;
     logWarnings: boolean;
-  }
+  },
+  recordScan?: (params: { layer: string; blocked: boolean; score?: number; reason?: string }) => void
 ) {
   if (!baseTool) return null;
   
@@ -50,6 +51,16 @@ export function createSecureWebFetchWrapper(
           contentLength: content.length
         }
       });
+      
+      // Record scan
+      if (recordScan) {
+        recordScan({
+          layer: 'content',
+          blocked: scanResult.score >= config.blockThreshold,
+          score: scanResult.score,
+          reason: scanResult.reason
+        });
+      }
       
       // Decision logic
       if (scanResult.score >= config.blockThreshold) {

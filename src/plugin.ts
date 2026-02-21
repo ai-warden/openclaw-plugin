@@ -12,10 +12,15 @@
 
 import { SecurityValidator } from './validator.js';
 import { createSecureWebFetchWrapper } from './tools/web-fetch-secure.js';
+import { StateManager } from './state-manager.js';
+import { registerWardenCommands } from './commands.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
   const config = api.pluginConfig as SecurityConfig;
+  
+  // Initialize state manager (runtime config + stats)
+  const stateManager = new StateManager(config.layers);
   
   // Initialize validator (will auto-detect API key from multiple sources)
   const validator = new SecurityValidator(config);
@@ -29,35 +34,48 @@ export default function aiWardenPlugin(api: any) {
   // LAYER 1: Channel Input Validation
   // ========================================================================
   
-  if (config.layers.channel) {
-    api.on('message_received', async (event: any, ctx: any) => {
-      if (config.verbose) {
-        console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}`);
-      }
-      
-      const result = await validator.scanContent({
-        content: event.content,
-        source: 'channel',
-        metadata: { channelId: ctx.channelId, userId: ctx.userId }
-      });
-      
-      if (result.blocked) {
-        // HIGH severity: Silent block (no details to attacker)
-        if (result.score > 500) {
-          throw new Error('[AI-Warden] Message blocked by security policy');
-        }
-        // MEDIUM: Inform but minimize details
-        throw new Error(`⚠️ Message blocked: ${result.reason || 'Security policy violation'}`);
-      }
+  api.on('message_received', async (event: any, ctx: any) => {
+    // Check if layer is enabled (runtime toggle)
+    if (!stateManager.isLayerEnabled('channel')) {
+      return; // Layer disabled, skip scan
+    }
+    
+    if (config.verbose) {
+      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}`);
+    }
+    
+    const result = await validator.scanContent({
+      content: event.content,
+      source: 'channel',
+      metadata: { channelId: ctx.channelId, userId: ctx.userId }
     });
-  }
+    
+    // Record scan
+    stateManager.recordScan({
+      layer: 'channel',
+      blocked: result.blocked,
+      score: result.score,
+      reason: result.reason
+    });
+    
+    if (result.blocked) {
+      // HIGH severity: Silent block (no details to attacker)
+      if (result.score > 500) {
+        throw new Error('[AI-Warden] Message blocked by security policy');
+      }
+      // MEDIUM: Inform but minimize details
+      throw new Error(`⚠️ Message blocked: ${result.reason || 'Security policy violation'}`);
+    }
+  });
   
   // ========================================================================
   // LAYER 2: Pre-LLM Gateway (Context Analysis)
   // ========================================================================
   
-  if (config.layers.preLlm) {
-    api.on('before_agent_start', async (event: any, ctx: any) => {
+  api.on('before_agent_start', async (event: any, ctx: any) => {
+    if (!stateManager.isLayerEnabled('preLlm')) {
+      return; // Layer disabled
+    }
       if (config.verbose) {
         console.log('[AI-Warden] Layer 2: Scanning full conversation context');
       }
@@ -89,6 +107,14 @@ export default function aiWardenPlugin(api: any) {
         }
       });
       
+      // Record scan
+      stateManager.recordScan({
+        layer: 'preLlm',
+        blocked: result.blocked,
+        score: result.score,
+        reason: result.reason
+      });
+      
       if (result.blocked) {
         // CRITICAL: Block entire LLM invocation
         // HIGH severity: Minimal info (prevent attack learning)
@@ -109,15 +135,16 @@ export default function aiWardenPlugin(api: any) {
           `(score: ${result.score}). Not blocking yet, but monitoring.`
         );
       }
-    });
-  }
+  });
   
   // ========================================================================
   // LAYER 3: Tool Argument Validation
   // ========================================================================
   
-  if (config.layers.toolArgs) {
-    api.on('before_tool_call', async (event: any, ctx: any) => {
+  api.on('before_tool_call', async (event: any, ctx: any) => {
+    if (!stateManager.isLayerEnabled('toolArgs')) {
+      return;
+    }
       // Skip content tools (handled by Layer 0 wrappers)
       const contentTools = ['web_fetch', 'browser', 'read'];
       if (contentTools.includes(event.toolName)) {
@@ -133,21 +160,29 @@ export default function aiWardenPlugin(api: any) {
         params: event.params
       });
       
+      // Record scan
+      stateManager.recordScan({
+        layer: 'toolArgs',
+        blocked: validation.block,
+        reason: validation.reason
+      });
+      
       if (validation.block) {
         return {
           block: true,
           blockReason: `⚠️ Tool blocked by AI-Warden: ${validation.reason}`
         };
       }
-    });
-  }
+  });
   
   // ========================================================================
   // LAYER 4: Subagent Task Validation
   // ========================================================================
   
-  if (config.layers.subagents) {
-    api.on('before_tool_call', async (event: any, ctx: any) => {
+  api.on('before_tool_call', async (event: any, ctx: any) => {
+    if (!stateManager.isLayerEnabled('subagents')) {
+      return;
+    }
       if (event.toolName !== 'sessions_spawn') return;
       
       if (config.verbose) {
@@ -159,26 +194,40 @@ export default function aiWardenPlugin(api: any) {
         params: event.params
       });
       
+      // Record scan
+      stateManager.recordScan({
+        layer: 'subagents',
+        blocked: validation.block,
+        reason: validation.reason
+      });
+      
       if (validation.block) {
         return {
           block: true,
           blockReason: `⚠️ Subagent blocked by AI-Warden: ${validation.reason}`
         };
       }
-    });
-  }
+  });
   
   // ========================================================================
   // LAYER 5: Output Filtering
   // ========================================================================
   
-  if (config.layers.output) {
-    api.on('message_sending', async (event: any, ctx: any) => {
+  api.on('message_sending', async (event: any, ctx: any) => {
+    if (!stateManager.isLayerEnabled('output')) {
+      return;
+    }
       if (config.verbose) {
         console.log('[AI-Warden] Layer 5: Filtering output');
       }
       
       const filtered = await validator.filterOutput(event.content);
+      
+      // Record scan (always log output filtering)
+      stateManager.recordScan({
+        layer: 'output',
+        blocked: filtered.modified
+      });
       
       if (filtered.modified) {
         if (config.verbose) {
@@ -187,14 +236,13 @@ export default function aiWardenPlugin(api: any) {
         
         return { content: filtered.content };
       }
-    });
-  }
+  });
   
   // ========================================================================
   // LAYER 0: Content Tool Wrappers (CRITICAL)
   // ========================================================================
   
-  if (config.layers.content) {
+  if (stateManager.isLayerEnabled('content')) {
     // We need to intercept tool creation to wrap web_fetch, browser, read
     // This is more complex and depends on OpenClaw's plugin API
     
@@ -212,7 +260,8 @@ export default function aiWardenPlugin(api: any) {
             blockThreshold: config.policy?.blockThreshold || 200,
             warnThreshold: config.policy?.warnThreshold || 100,
             logWarnings: config.verbose || false
-          }
+          },
+          (params) => stateManager.recordScan(params)
         );
         
         return { tool: secureWrapper };
@@ -256,33 +305,12 @@ export default function aiWardenPlugin(api: any) {
     });
   }
   
-  // Register /security command
-  api.registerCommand?.({
-    name: 'security',
-    description: 'View AI-Warden security statistics',
-    handler: async () => {
-      return {
-        text: [
-          '🛡️ **AI-Warden Security Status**',
-          '',
-          '**Enabled Layers:**',
-          config.layers.content ? '✅ Layer 0: Content Validation (CRITICAL)' : '❌ Layer 0: Disabled',
-          config.layers.channel ? '✅ Layer 1: Channel Input' : '❌ Layer 1: Disabled',
-          config.layers.preLlm ? '✅ Layer 2: Pre-LLM Context Analysis' : '⚠️  Layer 2: Disabled (enable for concatenated attack protection)',
-          config.layers.toolArgs ? '✅ Layer 3: Tool Arguments' : '❌ Layer 3: Disabled',
-          config.layers.subagents ? '✅ Layer 4: Subagent Tasks' : '❌ Layer 4: Disabled',
-          config.layers.output ? '✅ Layer 5: Output Filtering' : '❌ Layer 5: Disabled',
-          '',
-          '**Policy:**',
-          `Block Threshold: ${config.policy?.blockThreshold || 200}`,
-          `Warn Threshold: ${config.policy?.warnThreshold || 100}`,
-          `Cache TTL: ${config.policy?.cacheSeconds || 300}s`,
-          '',
-          'Powered by AI-Warden | https://prompt-shield.se'
-        ].join('\n')
-      };
-    }
-  });
+  // Register /warden commands
+  registerWardenCommands(api, config, stateManager);
+  
+  // Log initialization
+  console.log('[AI-Warden] Plugin initialized with runtime layer control');
+  console.log('[AI-Warden] Use /warden to manage security layers');
 }
 
 /**
