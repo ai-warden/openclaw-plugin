@@ -1,0 +1,96 @@
+# AI-Warden Moltbot Plugin - Example Configuration
+# Copy this to your Moltbot config.yaml and customize
+
+plugins:
+  ai-warden:
+    # Required: Enable the plugin
+    enabled: true
+    
+    # Optional: API key (auto-detects from multiple sources)
+    # Priority:
+    #   1. This field (if set)
+    #   2. AI_WARDEN_API_KEY environment variable
+    #   3. ~/.aiwardenrc (from `npx aiwarden login`)
+    #
+    # Recommended: Just run `npx aiwarden login` and leave this commented out
+    # apiKey: ${AI_WARDEN_API_KEY}  # From environment variable
+    # apiKey: "sk_live_your_key_here"  # Or hardcoded (NOT recommended)
+    
+    # Optional: API endpoint (default shown)
+    endpoint: "https://api.prompt-shield.se/v1"
+    
+    # Optional: Request timeout in ms
+    timeout: 5000
+    
+    # Optional: Enable verbose logging
+    verbose: false
+    
+    # Required: Which security layers to enable
+    layers:
+      content: true      # Layer 0 - CRITICAL (95% of attacks)
+      channel: true      # Layer 1 - Direct message attacks
+      toolArgs: true     # Layer 3 - Command injection
+      subagents: true    # Layer 4 - Privilege escalation
+      output: true       # Layer 5 - Data leakage
+    
+    # Optional: Security policy thresholds
+    policy:
+      blockThreshold: 200    # 0-1000, higher = more permissive
+      warnThreshold: 100     # Log warnings at this score
+      cacheSeconds: 300      # Cache valid results for 5 minutes
+    
+    # Optional: Content scanning settings
+    content:
+      scanUrls: true           # Scan web_fetch results
+      scanFiles: true          # Scan read tool results
+      maxContentSize: 100000   # Max bytes to scan
+    
+    # Optional: Output filtering settings
+    output:
+      redactEmails: true      # Redact email addresses
+      redactApiKeys: true     # Redact API keys (OpenAI, Anthropic, etc.)
+      redactPaths: false      # Redact file system paths
+
+---
+
+# Example: Strict Production Config
+# plugins:
+#   ai-warden:
+#     enabled: true
+#     apiKey: ${AI_WARDEN_API_KEY}
+#     verbose: true
+#     layers:
+#       content: true
+#       channel: true
+#       toolArgs: true
+#       subagents: true
+#       output: true
+#     policy:
+#       blockThreshold: 150   # Stricter than default
+#       warnThreshold: 75
+#       cacheSeconds: 600     # 10 minute cache
+
+---
+
+# Example: Development Config (No Security)
+# plugins:
+#   ai-warden:
+#     enabled: false  # Disable during development
+
+---
+
+# Example: Logging Only (No Blocking)
+# plugins:
+#   ai-warden:
+#     enabled: true
+#     apiKey: ${AI_WARDEN_API_KEY}
+#     verbose: true
+#     layers:
+#       content: true
+#       channel: false
+#       toolArgs: false
+#       subagents: true
+#       output: true
+#     policy:
+#       blockThreshold: 500   # Very high - only block extreme cases
+#       warnThreshold: 200    # Log everything suspicious
