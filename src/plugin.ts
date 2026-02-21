@@ -42,7 +42,12 @@ export default function aiWardenPlugin(api: any) {
       });
       
       if (result.blocked) {
-        throw new Error(`⚠️ Message blocked by AI-Warden: ${result.reason} (score: ${result.score})`);
+        // HIGH severity: Silent block (no details to attacker)
+        if (result.score > 500) {
+          throw new Error('[AI-Warden] Message blocked by security policy');
+        }
+        // MEDIUM: Inform but minimize details
+        throw new Error(`⚠️ Message blocked: ${result.reason || 'Security policy violation'}`);
       }
     });
   }
@@ -86,11 +91,15 @@ export default function aiWardenPlugin(api: any) {
       
       if (result.blocked) {
         // CRITICAL: Block entire LLM invocation
+        // HIGH severity: Minimal info (prevent attack learning)
+        if (result.score > 500) {
+          throw new Error('[AI-Warden] Conversation blocked: Security policy violation');
+        }
+        // MEDIUM: More context for legitimate debugging
         throw new Error(
-          `⚠️ Conversation blocked by AI-Warden context analysis:\n` +
-          `${result.reason} (score: ${result.score})\n\n` +
-          `This can happen when multiple safe messages combine into a malicious pattern.\n` +
-          `Session may need to be reset.`
+          `⚠️ Conversation blocked by context analysis.\n` +
+          `Reason: ${result.reason || 'Suspicious pattern detected'}\n\n` +
+          `Note: Multiple messages may have combined into a potentially malicious pattern.`
         );
       }
       

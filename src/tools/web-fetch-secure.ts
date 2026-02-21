@@ -98,7 +98,7 @@ function extractTextContent(result: any): string | null {
     );
     
     if (textBlocks.length > 0) {
-      return textBlocks.map(b => b.text).join('\n');
+      return textBlocks.map((b: { type: 'text'; text: string }) => b.text).join('\n');
     }
   }
   
@@ -107,6 +107,9 @@ function extractTextContent(result: any): string | null {
 
 /**
  * Create a blocked result that prevents malicious content from reaching LLM
+ * 
+ * Strategy: Inform LLM that content was blocked, but minimize attack details
+ * to prevent LLM from learning attack patterns.
  */
 function createBlockedResult(params: {
   url: string;
@@ -116,6 +119,32 @@ function createBlockedResult(params: {
 }): any {
   const { url, reason, score, threatType } = params;
   
+  // For HIGH severity (>500): Minimal info
+  if (score > 500) {
+    return {
+      content: [{
+        type: 'text',
+        text: [
+          `⚠️ **Content Security Block**`,
+          ``,
+          `The requested URL could not be retrieved due to security policies.`,
+          ``,
+          `URL: ${url}`,
+          `Status: Blocked by content filter`
+        ].join('\n')
+      }],
+      details: {
+        blocked: true,
+        url,
+        score,
+        finalUrl: url,
+        status: 403,
+        contentType: 'text/plain'
+      }
+    };
+  }
+  
+  // For MEDIUM severity (200-500): More detail for transparency
   return {
     content: [{
       type: 'text',
@@ -124,11 +153,10 @@ function createBlockedResult(params: {
         ``,
         `URL: ${url}`,
         `Reason: ${reason}`,
-        `Threat Score: ${score}/1000`,
-        threatType ? `Threat Type: ${threatType}` : '',
+        threatType ? `Category: ${threatType}` : '',
         ``,
-        `The requested URL has been blocked by AI-Warden content security filters.`,
-        `This typically indicates prompt injection, malware, or other malicious content.`
+        `The requested content has been blocked by AI-Warden security filters.`,
+        `This typically indicates potentially harmful content such as prompt injection attempts.`
       ].filter(Boolean).join('\n')
     }],
     details: {
