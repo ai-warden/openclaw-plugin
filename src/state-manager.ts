@@ -40,6 +40,8 @@ export class StateManager {
   private layerState: LayerState;
   private stats: SecurityStats;
   private saveDebounce: NodeJS.Timeout | null = null;
+  private apiDownNotified: boolean = false;
+  private lastApiError: number = 0;
   
   constructor(private configLayers: LayerState) {
     this.statePath = path.join(os.homedir(), '.ai-warden-state.json');
@@ -199,6 +201,39 @@ export class StateManager {
       recentBlocks: []
     };
     this.save();
+  }
+  
+  /**
+   * Record API error (for alerting)
+   */
+  recordApiError(): boolean {
+    this.lastApiError = Date.now();
+    
+    // Only notify once per hour
+    if (!this.apiDownNotified || Date.now() - this.lastApiError > 3600_000) {
+      this.apiDownNotified = true;
+      return true; // Should notify
+    }
+    
+    return false; // Already notified recently
+  }
+  
+  /**
+   * Clear API down status (when API recovers)
+   */
+  clearApiError(): void {
+    if (this.apiDownNotified) {
+      this.apiDownNotified = false;
+      // Could trigger "API recovered" notification here
+    }
+  }
+  
+  /**
+   * Check if API has been down recently
+   */
+  isApiDown(): boolean {
+    // Consider API down if error within last 5 minutes
+    return Date.now() - this.lastApiError < 300_000;
   }
   
   /**

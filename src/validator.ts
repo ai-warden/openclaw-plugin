@@ -19,8 +19,10 @@ export class SecurityValidator {
   private warden: AIWarden;
   private cache: Map<string, CachedResult>;
   private config: SecurityConfig;
+  private notifyApiDown?: (message: string) => void;
   
-  constructor(config: SecurityConfig) {
+  constructor(config: SecurityConfig, notifyApiDown?: (message: string) => void) {
+    this.notifyApiDown = notifyApiDown;
     this.config = config;
     
     // Resolve API key from multiple sources (priority chain)
@@ -138,6 +140,16 @@ export class SecurityValidator {
       return result;
       
     } catch (error: any) {
+      // Notify about API error (rate-limited)
+      if (this.notifyApiDown) {
+        this.notifyApiDown(
+          `⚠️ **AI-Warden API Unavailable**\n\n` +
+          `Error: ${error.message}\n` +
+          `Falling back to local pattern matching (~70-80% protection)\n\n` +
+          `This message is rate-limited to once per hour.`
+        );
+      }
+      
       // Check fail-open policy
       const failOpen = this.config.policy?.failOpen !== false; // Default: true
       

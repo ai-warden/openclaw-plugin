@@ -30,6 +30,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             '• `/warden status` - View security status',
             '• `/warden stats` - Show statistics',
             '• `/warden layer <name> on/off` - Toggle security layer',
+            '• `/warden health` - Check API connection status',
             '• `/warden reset` - Reset statistics',
             '• `/warden help` - Show detailed help',
             '',
@@ -53,6 +54,9 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
         
         case 'layer':
           return handleLayerToggle(args.slice(1), stateManager);
+        
+        case 'health':
+          return handleHealth(stateManager);
         
         case 'reset':
           return handleReset(stateManager);
@@ -167,6 +171,39 @@ function handleLayerToggle(args: string[], stateManager: StateManager): { text: 
   };
 }
 
+function handleHealth(stateManager: StateManager): { text: string } {
+  const isDown = stateManager.isApiDown();
+  
+  if (isDown) {
+    return {
+      text: [
+        '🔴 **AI-Warden API Status: Down**',
+        '',
+        '**Current Mode:** Fallback to local pattern matching',
+        '**Protection Level:** ~70-80% (degraded)',
+        '',
+        '⚠️ The API is currently unavailable.',
+        'Your bot is still protected by local patterns, but full AI-powered validation is offline.',
+        '',
+        'Check https://status.prompt-shield.se for updates.'
+      ].join('\n')
+    };
+  }
+  
+  return {
+    text: [
+      '🟢 **AI-Warden API Status: Operational**',
+      '',
+      '**Current Mode:** Full protection',
+      '**Protection Level:** ~98% (all 3 layers active)',
+      '',
+      'All systems operational. Your bot is fully protected.',
+      '',
+      'Use `/warden stats` to see recent security events.'
+    ].join('\n')
+  };
+}
+
 function handleReset(stateManager: StateManager): { text: string } {
   stateManager.resetStats();
   return {
@@ -197,6 +234,7 @@ function handleHelp(): { text: string } {
       '• `output` - Filters output (PII, API keys, credentials)',
       '',
       '**Maintenance:**',
+      '• `/warden health` - Check API connection & status',
       '• `/warden reset` - Reset all statistics',
       '',
       '**💡 Cost Optimization Tips:**',

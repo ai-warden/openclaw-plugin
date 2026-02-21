@@ -22,8 +22,26 @@ export default function aiWardenPlugin(api: any) {
   // Initialize state manager (runtime config + stats)
   const stateManager = new StateManager(config.layers);
   
+  // API down notification handler
+  const notifyApiDown = (message: string) => {
+    const shouldNotify = stateManager.recordApiError();
+    if (shouldNotify) {
+      // Log to console
+      console.error('[AI-Warden] API DOWN:', message);
+      
+      // Try to send notification via OpenClaw (if API available)
+      if (api.notify) {
+        api.notify({
+          level: 'error',
+          title: 'AI-Warden API Down',
+          message: message
+        });
+      }
+    }
+  };
+  
   // Initialize validator (will auto-detect API key from multiple sources)
-  const validator = new SecurityValidator(config);
+  const validator = new SecurityValidator(config, notifyApiDown);
   
   // Log initialization
   if (config.verbose) {
