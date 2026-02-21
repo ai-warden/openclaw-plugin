@@ -1,5 +1,5 @@
 /**
- * AI-Warden Moltbot Plugin - Main Entry Point
+ * AI-Warden OpenClaw Plugin - Main Entry Point
  * 
  * Implements 6-layer security defense:
  * - Layer 0: Content validation (web_fetch, browser, read) - CRITICAL
@@ -131,9 +131,9 @@ export default function aiWardenPlugin(api: any) {
   
   if (config.layers.content) {
     // We need to intercept tool creation to wrap web_fetch, browser, read
-    // This is more complex and depends on Moltbot's plugin API
+    // This is more complex and depends on OpenClaw's plugin API
     
-    // Approach 1: If Moltbot supports tool wrapping hooks
+    // Approach 1: If OpenClaw supports tool wrapping hooks
     api.on('tool_created', (event: any) => {
       if (event.toolName === 'web_fetch') {
         if (config.verbose) {

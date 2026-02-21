@@ -1,8 +1,8 @@
-# AI-Warden Moltbot Plugin 🛡️
+# AI-Warden OpenClaw Plugin 🛡️
 
-**Multi-layer security defense for Moltbot AI agents**
+**Multi-layer security defense for OpenClaw AI agents**
 
-Protect your Moltbot instance from:
+Protect your OpenClaw instance from:
 - ✅ Prompt injection attacks (indirect via web_fetch, browser, read)
 - ✅ Command injection (exec, shell commands)
 - ✅ Privilege escalation (subagent spawning)
@@ -14,7 +14,7 @@ Protect your Moltbot instance from:
 ### 1. Install
 
 ```bash
-npm install @ai-warden/moltbot-plugin
+npm install @ai-warden/openclaw-plugin
 ```
 
 ### 2. Get API Key (Choose One)
@@ -41,7 +41,7 @@ Opens your browser, logs you in, and saves API key to `~/.aiwardenrc` automatica
 
 ### 3. Configure
 
-Add to your Moltbot `config.yaml`:
+Add to your OpenClaw `config.yaml`:
 
 ```yaml
 plugins:
@@ -73,10 +73,10 @@ plugins:
       redactPaths: false
 ```
 
-### 4. Restart Moltbot
+### 4. Restart OpenClaw
 
 ```bash
-moltbot gateway restart
+openclaw gateway restart
 ```
 
 Done! Your agent is now protected 🎉
@@ -226,7 +226,7 @@ plugins:
 
 ### View Security Stats
 
-In any Moltbot chat, type:
+In any OpenClaw chat, type:
 ```
 /security
 ```
@@ -259,7 +259,7 @@ Powered by AI-Warden | https://prompt-shield.se
 **Solution:**
 ```bash
 export AI_WARDEN_API_KEY="sk_live_your_key_here"
-moltbot gateway restart
+openclaw gateway restart
 ```
 
 Or set in `config.yaml`:
@@ -310,7 +310,7 @@ Email [support@prompt-shield.se](mailto:support@prompt-shield.se) with:
 
 - **Documentation:** [https://prompt-shield.se/openclaw](https://prompt-shield.se/openclaw)
 - **Get API Key:** [https://prompt-shield.se/signup](https://prompt-shield.se/signup)
-- **GitHub:** [https://github.com/ai-warden/moltbot-plugin](https://github.com/ai-warden/moltbot-plugin)
+- **GitHub:** [https://github.com/ai-warden/openclaw-plugin](https://github.com/ai-warden/openclaw-plugin)
 - **Support:** [support@prompt-shield.se](mailto:support@prompt-shield.se)
 - **Core Package:** [ai-warden on NPM](https://www.npmjs.com/package/ai-warden)
 

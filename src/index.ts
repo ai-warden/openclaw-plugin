@@ -1,5 +1,5 @@
 /**
- * AI-Warden Moltbot Plugin
+ * AI-Warden OpenClaw Plugin
  * Multi-layer security defense for AI agents
  * 
  * @see https://prompt-shield.se/openclaw

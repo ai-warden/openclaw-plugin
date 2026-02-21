@@ -77,7 +77,7 @@ plugins:
 plugins:
   ai-warden:
     enabled: true
-    apiKey: ${AI_WARDEN_API_KEY}  # Moltbot substitutes from env
+    apiKey: ${AI_WARDEN_API_KEY}  # OpenClaw substitutes from env
     layers: { ... }
 ```
 
@@ -251,9 +251,9 @@ npx aiwarden login
 export AI_WARDEN_API_KEY="sk_live_your_key_here"
 ```
 
-### Key works in terminal but not in Moltbot
+### Key works in terminal but not in OpenClaw
 
-**Cause:** Environment variable not set in Moltbot's shell
+**Cause:** Environment variable not set in OpenClaw's shell
 
 **Fix:**
 ```bash

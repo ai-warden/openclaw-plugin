@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-02-21
 
 ### Added
-- 🎉 Initial release of AI-Warden Moltbot Plugin
+- 🎉 Initial release of AI-Warden OpenClaw Plugin
 - Layer 0: Content validation (web_fetch, browser, read)
 - Layer 1: Channel input validation (Telegram, Discord, Signal, WhatsApp)
 - Layer 3: Tool argument sanitization (exec, sessions_spawn, message)
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Real-time metrics dashboard
 - [ ] Custom pattern support
 - [ ] Webhook notifications for high-severity threats
-- [ ] Integration with Moltbot's built-in monitoring
+- [ ] Integration with OpenClaw's built-in monitoring
 
 ---
 

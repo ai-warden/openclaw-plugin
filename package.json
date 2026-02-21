@@ -1,7 +1,7 @@
 {
-  "name": "@ai-warden/moltbot-plugin",
+  "name": "@ai-warden/openclaw-plugin",
   "version": "1.0.0",
-  "description": "AI-Warden security integration for Moltbot - Multi-layer defense against prompt injection, command injection, and data leakage",
+  "description": "AI-Warden security integration for OpenClaw - Multi-layer defense against prompt injection, command injection, and data leakage",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -11,8 +11,8 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "moltbot",
-    "moltbot-plugin",
+    "openclaw",
+    "openclaw-plugin",
     "ai-security",
     "prompt-injection",
     "ai-warden",
@@ -24,14 +24,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ai-warden/moltbot-plugin.git"
+    "url": "git+https://github.com/ai-warden/openclaw-plugin.git"
   },
   "bugs": {
-    "url": "https://github.com/ai-warden/moltbot-plugin/issues"
+    "url": "https://github.com/ai-warden/openclaw-plugin/issues"
   },
   "homepage": "https://prompt-shield.se/openclaw",
   "peerDependencies": {
-    "moltbot": ">=0.50.0"
+    "openclaw": ">=0.50.0"
   },
   "dependencies": {
     "ai-warden": "^1.0.0"

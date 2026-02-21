@@ -6,7 +6,7 @@
 import type { SecurityValidator } from '../validator.js';
 
 /**
- * Creates a secure wrapper around Moltbot's web_fetch tool
+ * Creates a secure wrapper around OpenClaw's web_fetch tool
  * This is needed because hooks run AFTER tool execution, but we need
  * to scan content BEFORE it enters the LLM context
  */

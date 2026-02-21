@@ -1,6 +1,6 @@
 /**
  * SecurityValidator - Wrapper around ai-warden core package
- * Provides Moltbot-specific validation logic
+ * Provides OpenClaw-specific validation logic
  */
 
 import AIWarden from 'ai-warden';

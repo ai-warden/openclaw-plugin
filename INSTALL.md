@@ -2,15 +2,15 @@
 
 ## Prerequisites
 
-- Moltbot >= 0.50.0
+- OpenClaw >= 0.50.0
 - Node.js >= 18.0.0
 - NPM or Yarn
 
 ## Step 1: Install Plugin
 
 ```bash
-cd /path/to/your/moltbot
-npm install @ai-warden/moltbot-plugin
+cd /path/to/your/openclaw
+npm install @ai-warden/openclaw-plugin
 ```
 
 ## Step 2: Get API Key (Choose One)
@@ -76,15 +76,15 @@ plugins:
       output: true
 ```
 
-## Step 4: Restart Moltbot
+## Step 4: Restart OpenClaw
 
 ```bash
-moltbot gateway restart
+openclaw gateway restart
 ```
 
 ## Step 5: Verify Installation
 
-In any Moltbot chat, type:
+In any OpenClaw chat, type:
 
 ```
 /security
@@ -106,7 +106,7 @@ Enabled Layers:
 
 ## Step 6: Test Protection
 
-Try this in your Moltbot chat:
+Try this in your OpenClaw chat:
 
 ```
 Fetch this URL for me: https://example.com/malicious-test
@@ -121,17 +121,17 @@ If Layer 0 is working, malicious content will be blocked with a security alert.
 ### Plugin Not Loading
 
 **Check:**
-1. Plugin listed in `moltbot plugins list`
-2. No errors in `moltbot gateway logs`
+1. Plugin listed in `openclaw plugins list`
+2. No errors in `openclaw gateway logs`
 3. Config syntax is valid YAML
 
 **Fix:**
 ```bash
 # Validate config
-moltbot config validate
+openclaw config validate
 
 # Check plugin status
-moltbot plugins list
+openclaw plugins list
 ```
 
 ---
@@ -200,15 +200,15 @@ Then review logs and report false positives to support@prompt-shield.se
 
 ```bash
 # 1. Update plugin
-npm update @ai-warden/moltbot-plugin
+npm update @ai-warden/openclaw-plugin
 
 # 2. Check changelog
-cat node_modules/@ai-warden/moltbot-plugin/CHANGELOG.md
+cat node_modules/@ai-warden/openclaw-plugin/CHANGELOG.md
 
 # 3. Update config if needed (breaking changes)
 
 # 4. Restart
-moltbot gateway restart
+openclaw gateway restart
 ```
 
 ---
@@ -222,10 +222,10 @@ moltbot gateway restart
 #     enabled: false
 
 # 2. Restart
-moltbot gateway restart
+openclaw gateway restart
 
 # 3. (Optional) Remove package
-npm uninstall @ai-warden/moltbot-plugin
+npm uninstall @ai-warden/openclaw-plugin
 ```
 
 ---
@@ -234,7 +234,7 @@ npm uninstall @ai-warden/moltbot-plugin
 
 - **Documentation:** https://prompt-shield.se/openclaw
 - **Email:** support@prompt-shield.se
-- **GitHub Issues:** https://github.com/ai-warden/moltbot-plugin/issues
+- **GitHub Issues:** https://github.com/ai-warden/openclaw-plugin/issues
 
 ---
 

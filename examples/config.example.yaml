@@ -1,5 +1,5 @@
-# AI-Warden Moltbot Plugin - Example Configuration
-# Copy this to your Moltbot config.yaml and customize
+# AI-Warden OpenClaw Plugin - Example Configuration
+# Copy this to your OpenClaw config.yaml and customize
 
 plugins:
   ai-warden:

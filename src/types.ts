@@ -1,5 +1,5 @@
 /**
- * AI-Warden Moltbot Plugin - Type Definitions
+ * AI-Warden OpenClaw Plugin - Type Definitions
  */
 
 export interface SecurityConfig {

@@ -1,15 +1,15 @@
-# AI-Warden Moltbot Plugin - Project Summary
+# AI-Warden OpenClaw Plugin - Project Summary
 
 ## 🎯 What We Built
 
-A **production-ready Moltbot security plugin** that implements the 6-layer defense architecture proposed in the security analysis, using a **plugin-based approach** instead of per-tool patching.
+A **production-ready OpenClaw security plugin** that implements the 6-layer defense architecture proposed in the security analysis, using a **plugin-based approach** instead of per-tool patching.
 
 ---
 
 ## 📦 Package Structure
 
 ```
-@ai-warden/moltbot-plugin/
+@ai-warden/openclaw-plugin/
 ├── src/
 │   ├── index.ts                    # Plugin definition & exports
 │   ├── plugin.ts                   # Hook handlers (Layers 1-5)
@@ -19,7 +19,7 @@ A **production-ready Moltbot security plugin** that implements the 6-layer defen
 │       └── web-fetch-secure.ts     # Layer 0 wrapper for web_fetch
 │
 ├── examples/
-│   └── config.example.yaml         # Example Moltbot configuration
+│   └── config.example.yaml         # Example OpenClaw configuration
 │
 ├── package.json                    # NPM package metadata
 ├── tsconfig.json                   # TypeScript configuration
@@ -48,7 +48,7 @@ A **production-ready Moltbot security plugin** that implements the 6-layer defen
 
 ### ⚠️ Layer 2: Pre-LLM Gateway
 - **Status:** ❌ Not implemented (planned for v1.1)
-- **Reason:** Requires deeper Moltbot integration
+- **Reason:** Requires deeper OpenClaw integration
 
 ### ✅ Layer 3: Tool Argument Sanitization
 - **Hook:** `before_tool_call`
@@ -90,14 +90,14 @@ A **production-ready Moltbot security plugin** that implements the 6-layer defen
     "ai-warden": "^1.0.0"  // Your core NPM package
   },
   "peerDependencies": {
-    "moltbot": ">=0.50.0"
+    "openclaw": ">=0.50.0"
   }
 }
 ```
 
 **Dependency Flow:**
 ```
-@ai-warden/moltbot-plugin
+@ai-warden/openclaw-plugin
   └── ai-warden (core package)
       └── Performs actual scanning/validation
 ```
@@ -106,12 +106,12 @@ A **production-ready Moltbot security plugin** that implements the 6-layer defen
 
 **SecurityValidator** (`src/validator.ts`)
 - Wraps `ai-warden` core package
-- Provides Moltbot-specific validation logic
+- Provides OpenClaw-specific validation logic
 - Handles caching (300s TTL, LRU)
 - Fallback to local scanning if API fails
 
 **Plugin Registration** (`src/index.ts`)
-- Exports plugin definition for Moltbot
+- Exports plugin definition for OpenClaw
 - Provides configuration schema with validation
 - TypeScript type exports for advanced users
 
@@ -174,25 +174,25 @@ A **production-ready Moltbot security plugin** that implements the 6-layer defen
 
 - [ ] **Test locally:**
   ```bash
-  cd moltbot-plugin
+  cd openclaw-plugin
   npm install
   npm run build
   npm test
   ```
 
-- [ ] **Test in real Moltbot:**
+- [ ] **Test in real OpenClaw:**
   ```bash
   # Link locally
-  cd moltbot-plugin
+  cd openclaw-plugin
   npm link
   
-  # Use in Moltbot
-  cd /path/to/moltbot
-  npm link @ai-warden/moltbot-plugin
+  # Use in OpenClaw
+  cd /path/to/openclaw
+  npm link @ai-warden/openclaw-plugin
   
   # Configure & test
   vim config.yaml
-  moltbot gateway restart
+  openclaw gateway restart
   ```
 
 - [ ] **Verify all files:**
@@ -228,7 +228,7 @@ npm publish --access public
 ### After Publishing
 
 - [ ] Update prompt-shield.se/openclaw page
-- [ ] Announce on Moltbot Discord
+- [ ] Announce on OpenClaw Discord
 - [ ] Submit to ClawdHub (if exists)
 - [ ] Create GitHub releases
 - [ ] Update documentation site
@@ -240,7 +240,7 @@ npm publish --access public
 ### Value Proposition
 
 **For Self-Hosters:**
-"Running Moltbot without content scanning? You WILL be compromised. AI-Warden blocks 95% of attacks in <150ms with zero code changes."
+"Running OpenClaw without content scanning? You WILL be compromised. AI-Warden blocks 95% of attacks in <150ms with zero code changes."
 
 **For Businesses:**
 "Enterprise-grade security for your AI agents. Prevent prompt injection, data leakage, and privilege escalation with a single NPM install."
@@ -253,11 +253,11 @@ npm publish --access public
 
 ### Distribution Channels
 
-1. **NPM Registry** (`npm install @ai-warden/moltbot-plugin`)
-2. **ClawdHub** (Moltbot plugin marketplace)
+1. **NPM Registry** (`npm install @ai-warden/openclaw-plugin`)
+2. **ClawdHub** (OpenClaw plugin marketplace)
 3. **GitHub Marketplace** (if applicable)
 4. **Prompt-Shield Website** (openclaw page)
-5. **Moltbot Discord** (announcements)
+5. **OpenClaw Discord** (announcements)
 6. **Security Blogs** (guest posts)
 
 ---
@@ -285,9 +285,9 @@ npm publish --access public
 
 ## 🔗 Important Links
 
-- **NPM Package:** https://www.npmjs.com/package/@ai-warden/moltbot-plugin (pending)
+- **NPM Package:** https://www.npmjs.com/package/@ai-warden/openclaw-plugin (pending)
 - **Core Package:** https://www.npmjs.com/package/ai-warden (published)
-- **GitHub Repo:** https://github.com/ai-warden/moltbot-plugin (create)
+- **GitHub Repo:** https://github.com/ai-warden/openclaw-plugin (create)
 - **Documentation:** https://prompt-shield.se/openclaw
 - **API Keys:** https://prompt-shield.se/signup
 
