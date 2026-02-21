@@ -57,6 +57,11 @@ export default {
             description: 'Layer 1: Channel input validation',
             default: true
           },
+          preLlm: {
+            type: 'boolean',
+            description: 'Layer 2: Pre-LLM context analysis (detects concatenated attacks)',
+            default: false
+          },
           toolArgs: {
             type: 'boolean',
             description: 'Layer 3: Tool argument sanitization',

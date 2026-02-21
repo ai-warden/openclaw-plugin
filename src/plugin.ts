@@ -48,6 +48,62 @@ export default function aiWardenPlugin(api: any) {
   }
   
   // ========================================================================
+  // LAYER 2: Pre-LLM Gateway (Context Analysis)
+  // ========================================================================
+  
+  if (config.layers.preLlm) {
+    api.on('before_agent_start', async (event: any, ctx: any) => {
+      if (config.verbose) {
+        console.log('[AI-Warden] Layer 2: Scanning full conversation context');
+      }
+      
+      // Build full context from conversation history
+      const messages = event.messages || [];
+      const fullContext = messages
+        .map((msg: any) => {
+          const role = msg.role || 'user';
+          const content = typeof msg.content === 'string' 
+            ? msg.content 
+            : JSON.stringify(msg.content);
+          return `[${role}]: ${content}`;
+        })
+        .join('\n\n');
+      
+      if (!fullContext || fullContext.length === 0) {
+        return; // No context to scan
+      }
+      
+      // Scan the FULL conversation context
+      const result = await validator.scanContent({
+        content: fullContext,
+        source: 'pre_llm_context',
+        metadata: { 
+          sessionKey: ctx.sessionKey,
+          messageCount: messages.length,
+          contextLength: fullContext.length
+        }
+      });
+      
+      if (result.blocked) {
+        // CRITICAL: Block entire LLM invocation
+        throw new Error(
+          `⚠️ Conversation blocked by AI-Warden context analysis:\n` +
+          `${result.reason} (score: ${result.score})\n\n` +
+          `This can happen when multiple safe messages combine into a malicious pattern.\n` +
+          `Session may need to be reset.`
+        );
+      }
+      
+      if (result.score >= (config.policy?.warnThreshold || 100) && config.verbose) {
+        console.warn(
+          `[AI-Warden] Layer 2 Warning: Suspicious conversation pattern detected ` +
+          `(score: ${result.score}). Not blocking yet, but monitoring.`
+        );
+      }
+    });
+  }
+  
+  // ========================================================================
   // LAYER 3: Tool Argument Validation
   // ========================================================================
   
@@ -203,6 +259,7 @@ export default function aiWardenPlugin(api: any) {
           '**Enabled Layers:**',
           config.layers.content ? '✅ Layer 0: Content Validation (CRITICAL)' : '❌ Layer 0: Disabled',
           config.layers.channel ? '✅ Layer 1: Channel Input' : '❌ Layer 1: Disabled',
+          config.layers.preLlm ? '✅ Layer 2: Pre-LLM Context Analysis' : '⚠️  Layer 2: Disabled (enable for concatenated attack protection)',
           config.layers.toolArgs ? '✅ Layer 3: Tool Arguments' : '❌ Layer 3: Disabled',
           config.layers.subagents ? '✅ Layer 4: Subagent Tasks' : '❌ Layer 4: Disabled',
           config.layers.output ? '✅ Layer 5: Output Filtering' : '❌ Layer 5: Disabled',

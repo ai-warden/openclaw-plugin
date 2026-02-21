@@ -29,8 +29,8 @@ export interface SecurityConfig {
     /** Layer 1: Channel input validation */
     channel: boolean;
     
-    /** Layer 2: Pre-LLM gateway (future) */
-    preLlm?: boolean;
+    /** Layer 2: Pre-LLM gateway (context analysis for concatenated attacks) */
+    preLlm: boolean;
     
     /** Layer 3: Tool argument sanitization */
     toolArgs: boolean;

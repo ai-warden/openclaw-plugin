@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 🎉 Initial release of AI-Warden OpenClaw Plugin
-- Layer 0: Content validation (web_fetch, browser, read)
-- Layer 1: Channel input validation (Telegram, Discord, Signal, WhatsApp)
-- Layer 3: Tool argument sanitization (exec, sessions_spawn, message)
-- Layer 4: Subagent task validation
-- Layer 5: Output filtering (PII, API keys, credentials)
+- **Layer 0: Content validation** (web_fetch, browser, read)
+- **Layer 1: Channel input validation** (Telegram, Discord, Signal, WhatsApp)
+- **Layer 2: Pre-LLM context analysis** (detects concatenated attacks - optional)
+- **Layer 3: Tool argument sanitization** (exec, sessions_spawn, message)
+- **Layer 4: Subagent task validation**
+- **Layer 5: Output filtering** (PII, API keys, credentials)
 - Smart caching (300s TTL, LRU eviction)
 - `/security` command for status monitoring
 - Configuration schema with validation
