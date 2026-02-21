@@ -138,9 +138,18 @@ export class SecurityValidator {
       return result;
       
     } catch (error: any) {
-      // Fallback to local scanning if API fails
-      console.warn(`[AI-Warden] API error, falling back to local scan: ${error.message}`);
-      return this.scanContentLocal(content);
+      // Check fail-open policy
+      const failOpen = this.config.policy?.failOpen !== false; // Default: true
+      
+      if (failOpen) {
+        // Fallback to local scanning if API fails
+        console.warn(`[AI-Warden] API error, falling back to local scan: ${error.message}`);
+        return this.scanContentLocal(content);
+      } else {
+        // Fail closed - strict security mode
+        console.error(`[AI-Warden] API unavailable (fail-closed mode): ${error.message}`);
+        throw new Error('[AI-Warden] Security validation unavailable. Please try again later.');
+      }
     }
   }
   

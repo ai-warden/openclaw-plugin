@@ -52,6 +52,13 @@ export interface SecurityConfig {
     
     /** Cache TTL in seconds */
     cacheSeconds: number;
+    
+    /** 
+     * Fail-open mode: If API is unavailable, allow requests through
+     * - true (default): Bot keeps working, falls back to local patterns
+     * - false: Strict security, block if API down
+     */
+    failOpen?: boolean;
   };
   
   /** Content validation settings */
