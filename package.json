@@ -1,5 +1,5 @@
 {
-  "name": "@ai-warden/openclaw-plugin",
+  "name": "@ai-warden-tech/openclaw-plugin",
   "version": "1.1.0",
   "description": "AI-Warden security plugin for Moltbot/OpenClaw - Multi-layer defense with PII detection, prompt injection protection, and runtime control",
   "main": "dist/index.js",
