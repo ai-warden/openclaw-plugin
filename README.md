@@ -15,31 +15,154 @@ Protect your Moltbot instance from:
 
 ## 🚀 Quick Start
 
-### Installation for Moltbot
+### Step 1: Installation
+
+Choose your platform:
+
+<details open>
+<summary><b>🐳 Docker (Recommended - All Platforms)</b></summary>
+
+**Linux / macOS:**
+```bash
+# Clone plugin inside container
+docker exec moltbot bash -c "
+  cd /moltbot-src/extensions && 
+  git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden && 
+  cd ai-warden && 
+  npm install && 
+  npm run build
+"
+
+# Restart Moltbot
+docker compose restart
+
+# Verify installation
+docker compose logs | grep AI-Warden
+# Expected: [AI-Warden] Plugin initialized with runtime layer control
+```
+
+**Windows PowerShell:**
+```powershell
+# Clone plugin inside container
+docker exec moltbot bash -c "cd /moltbot-src/extensions && git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden && cd ai-warden && npm install && npm run build"
+
+# Restart Moltbot
+docker compose restart
+
+# Verify installation
+docker compose logs --tail 50 | Select-String "AI-Warden"
+# Expected: [AI-Warden] Plugin initialized with runtime layer control
+```
+
+**Windows CMD:**
+```cmd
+REM Clone plugin inside container
+docker exec moltbot bash -c "cd /moltbot-src/extensions && git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden && cd ai-warden && npm install && npm run build"
+
+REM Restart Moltbot
+docker compose restart
+
+REM Verify installation
+docker compose logs --tail 50 | findstr "AI-Warden"
+```
+
+</details>
+
+<details>
+<summary><b>🐧 Linux (Native Install)</b></summary>
 
 ```bash
-# 1. Clone into extensions directory
-cd /moltbot-src/extensions  # or ~/.moltbot/extensions for native install
-git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
+# Navigate to Moltbot extensions directory
+cd ~/.moltbot/extensions
+# Or for system-wide: cd /opt/moltbot/extensions
 
-# 2. Build
+# Clone and build
+git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
 cd ai-warden
 npm install
 npm run build
 
-# 3. Verify critical files
-ls -la moltbot.plugin.json  # ✅ Manifest
-ls -la index.ts             # ✅ Entry point
-grep '"moltbot"' package.json  # ✅ Moltbot field
+# Verify files exist
+ls -la moltbot.plugin.json index.ts
+grep '"moltbot"' package.json
 
-# Done! Continue to step 2 for API key setup
+# Restart Moltbot
+moltbot gateway restart
+
+# Or if using systemd:
+sudo systemctl restart moltbot
+
+# Verify
+journalctl -u moltbot -f | grep AI-Warden
 ```
 
-### Installation for OpenClaw (npm)
+</details>
+
+<details>
+<summary><b>🍎 macOS (Native Install)</b></summary>
+
+```bash
+# Navigate to Moltbot extensions directory
+cd ~/.moltbot/extensions
+
+# Clone and build
+git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
+cd ai-warden
+npm install
+npm run build
+
+# Verify files exist
+ls -la moltbot.plugin.json index.ts
+
+# Restart Moltbot
+moltbot gateway restart
+
+# Verify in logs
+tail -f ~/.moltbot/logs/moltbot.log | grep AI-Warden
+# Expected: [AI-Warden] Plugin initialized with runtime layer control
+```
+
+</details>
+
+<details>
+<summary><b>🪟 Windows (Native Install - PowerShell)</b></summary>
+
+```powershell
+# Navigate to Moltbot extensions directory
+cd $env:USERPROFILE\.moltbot\extensions
+
+# Clone and build
+git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
+cd ai-warden
+npm install
+npm run build
+
+# Verify files exist
+Get-ChildItem moltbot.plugin.json, index.ts
+Select-String -Path package.json -Pattern '"moltbot"'
+
+# Restart Moltbot
+moltbot gateway restart
+
+# Verify in logs
+Get-Content $env:USERPROFILE\.moltbot\logs\moltbot.log -Tail 50 | Select-String "AI-Warden"
+# Expected: [AI-Warden] Plugin initialized with runtime layer control
+```
+
+</details>
+
+<details>
+<summary><b>📦 NPM (For developers / custom builds)</b></summary>
 
 ```bash
 npm install @ai-warden/openclaw-plugin
 ```
+
+Then configure in your Moltbot config file.
+
+</details>
+
+---
 
 ### 2. Get API Key (Choose One)
 
@@ -128,34 +251,92 @@ plugins:
       redactPaths: false
 ```
 
-### 4. Restart
+### 4. Restart Moltbot
 
-**Moltbot:**
-```bash
-docker compose restart  # Docker
-# or
-moltbot gateway restart  # Native
-```
-
-**OpenClaw:**
-```bash
-openclaw gateway restart
-```
-
-### 5. Verify
-
-Check logs for successful initialization:
+<details>
+<summary><b>🐳 Docker</b></summary>
 
 ```bash
-# Moltbot
-docker compose logs | grep AI-Warden
+# Linux/macOS:
+docker compose restart
 
-# Expected output:
-# [AI-Warden] Plugin initialized with runtime layer control
-# [AI-Warden] Use /warden to manage security layers
+# Windows PowerShell:
+docker compose restart
+
+# Windows CMD:
+docker compose restart
 ```
 
-Done! Your agent is now protected 🎉
+Wait 10 seconds for startup, then check logs:
+
+```bash
+# Linux/macOS:
+docker compose logs --tail 30 | grep AI-Warden
+
+# Windows PowerShell:
+docker compose logs --tail 30 | Select-String "AI-Warden"
+
+# Windows CMD:
+docker compose logs --tail 30 | findstr "AI-Warden"
+```
+
+</details>
+
+<details>
+<summary><b>🐧 Linux Native</b></summary>
+
+```bash
+# CLI restart:
+moltbot gateway restart
+
+# Or systemd:
+sudo systemctl restart moltbot
+
+# Check logs:
+journalctl -u moltbot -n 30 | grep AI-Warden
+# Or:
+tail -f ~/.moltbot/logs/moltbot.log | grep AI-Warden
+```
+
+</details>
+
+<details>
+<summary><b>🍎 macOS Native</b></summary>
+
+```bash
+# Restart:
+moltbot gateway restart
+
+# Check logs:
+tail -f ~/.moltbot/logs/moltbot.log | grep AI-Warden
+```
+
+</details>
+
+<details>
+<summary><b>🪟 Windows Native</b></summary>
+
+```powershell
+# Restart:
+moltbot gateway restart
+
+# Check logs:
+Get-Content $env:USERPROFILE\.moltbot\logs\moltbot.log -Tail 30 | Select-String "AI-Warden"
+```
+
+</details>
+
+### 5. Verify Installation
+
+**Expected log output:**
+```
+[AI-Warden] Plugin initialized with runtime layer control
+[AI-Warden] Use /warden to manage security layers
+```
+
+**✅ If you see this → Success!** Your agent is now protected 🎉
+
+**❌ If not, see [Troubleshooting](#-troubleshooting) below.**
 
 ---
 
@@ -535,6 +716,49 @@ Powered by AI-Warden | https://prompt-shield.se
 ---
 
 ## 🆘 Troubleshooting
+
+### Plugin not loading / "Command not found"
+
+**Docker:**
+```bash
+# Check if plugin directory exists:
+docker exec moltbot ls -la /moltbot-src/extensions/ai-warden
+
+# Check if built:
+docker exec moltbot ls -la /moltbot-src/extensions/ai-warden/dist
+
+# Rebuild if needed:
+docker exec moltbot bash -c "cd /moltbot-src/extensions/ai-warden && npm run build"
+docker compose restart
+```
+
+**Native (Linux/macOS):**
+```bash
+# Check plugin directory:
+ls -la ~/.moltbot/extensions/ai-warden
+
+# Check if built:
+ls -la ~/.moltbot/extensions/ai-warden/dist
+
+# Rebuild if needed:
+cd ~/.moltbot/extensions/ai-warden
+npm run build
+moltbot gateway restart
+```
+
+**Native (Windows):**
+```powershell
+# Check plugin directory:
+Get-ChildItem $env:USERPROFILE\.moltbot\extensions\ai-warden
+
+# Check if built:
+Get-ChildItem $env:USERPROFILE\.moltbot\extensions\ai-warden\dist
+
+# Rebuild if needed:
+cd $env:USERPROFILE\.moltbot\extensions\ai-warden
+npm run build
+moltbot gateway restart
+```
 
 ### "API key required" error
 
