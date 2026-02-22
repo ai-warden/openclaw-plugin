@@ -23,12 +23,21 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
   api.registerCommand?.({
     name: 'warden',
     description: 'AI-Warden security control panel',
+    acceptsArgs: true,  // Enable argument parsing
     handler: async (args: any) => {
       try {
-        console.log('[AI-Warden] /warden handler called with args:', args);
+        console.log('[AI-Warden] /warden handler called with args:', JSON.stringify(args, null, 2));
         
         // Moltbot passes object with args array nested inside
-        const argsArray = Array.isArray(args) ? args : (args?.args || []);
+        // But commandBody may contain the full text: "/warden status"
+        let argsArray = Array.isArray(args) ? args : (args?.args || []);
+        
+        // If args is empty but commandBody exists, parse it
+        if (argsArray.length === 0 && args?.commandBody) {
+          const parts = args.commandBody.trim().split(/\s+/);
+          argsArray = parts.slice(1); // Skip first part ("/warden")
+        }
+        
         console.log('[AI-Warden] Extracted args array:', argsArray);
         
         if (!argsArray || argsArray.length === 0 || !argsArray[0]) {
