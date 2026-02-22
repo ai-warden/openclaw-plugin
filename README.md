@@ -1,8 +1,12 @@
-# AI-Warden OpenClaw Plugin 🛡️
+# AI-Warden Plugin for Moltbot 🛡️
 
-**Multi-layer security defense for OpenClaw AI agents**
+**Multi-layer security defense for Moltbot/OpenClaw AI agents**
 
-Protect your OpenClaw instance from:
+[![Version](https://img.shields.io/badge/version-1.0.1-blue)](https://github.com/ai-warden/openclaw-plugin)
+[![Status](https://img.shields.io/badge/status-production-green)](https://ai-warden.io)
+[![Moltbot](https://img.shields.io/badge/moltbot-compatible-purple)](https://docs.molt.bot)
+
+Protect your Moltbot instance from:
 - ✅ Prompt injection attacks (indirect via web_fetch, browser, read)
 - ✅ Command injection (exec, shell commands)
 - ✅ Privilege escalation (subagent spawning)
@@ -11,7 +15,27 @@ Protect your OpenClaw instance from:
 
 ## 🚀 Quick Start
 
-### 1. Install
+### Installation for Moltbot
+
+```bash
+# 1. Clone into extensions directory
+cd /moltbot-src/extensions  # or ~/.moltbot/extensions for native install
+git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
+
+# 2. Build
+cd ai-warden
+npm install
+npm run build
+
+# 3. Verify critical files
+ls -la moltbot.plugin.json  # ✅ Manifest
+ls -la index.ts             # ✅ Entry point
+grep '"moltbot"' package.json  # ✅ Moltbot field
+
+# Done! Continue to step 2 for API key setup
+```
+
+### Installation for OpenClaw (npm)
 
 ```bash
 npm install @ai-warden/openclaw-plugin
@@ -26,7 +50,7 @@ npx aiwarden login
 Opens your browser, logs you in, and saves API key to `~/.aiwardenrc` automatically.
 
 **Option B: Manual**
-1. Sign up at [https://prompt-shield.se/signup](https://prompt-shield.se/signup)
+1. Sign up at [https://ai-warden.io/signup](https://ai-warden.io/signup)
 2. Copy API key
 3. Set environment variable:
    ```bash
@@ -41,11 +65,42 @@ Opens your browser, logs you in, and saves API key to `~/.aiwardenrc` automatica
 
 ### 3. Configure
 
-Add to your OpenClaw `config.yaml`:
+**For Moltbot:** Add to `~/.moltbot/moltbot.json` (or config managed via UI):
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "openclaw-plugin": {
+        "enabled": true,
+        "config": {
+          "apiKey": "",  // Optional - auto-detects from env/~/.aiwardenrc
+          "layers": {
+            "content": true,
+            "channel": true,
+            "preLlm": false,
+            "toolArgs": true,
+            "subagents": true,
+            "output": true
+          },
+          "policy": {
+            "blockThreshold": 200,
+            "warnThreshold": 100,
+            "failOpen": true
+          },
+          "enableStats": true
+        }
+      }
+    }
+  }
+}
+```
+
+**For OpenClaw (YAML):** Add to `config.yaml`:
 
 ```yaml
 plugins:
-  ai-warden:
+  openclaw-plugin:
     enabled: true
     # API key optional - auto-detects from:
     # 1. ~/.aiwardenrc (from `npx aiwarden login`)
@@ -73,10 +128,31 @@ plugins:
       redactPaths: false
 ```
 
-### 4. Restart OpenClaw
+### 4. Restart
 
+**Moltbot:**
+```bash
+docker compose restart  # Docker
+# or
+moltbot gateway restart  # Native
+```
+
+**OpenClaw:**
 ```bash
 openclaw gateway restart
+```
+
+### 5. Verify
+
+Check logs for successful initialization:
+
+```bash
+# Moltbot
+docker compose logs | grep AI-Warden
+
+# Expected output:
+# [AI-Warden] Plugin initialized with runtime layer control
+# [AI-Warden] Use /warden to manage security layers
 ```
 
 Done! Your agent is now protected 🎉
@@ -323,7 +399,7 @@ policy:
 ```
 
 **Report false positives:**
-Email [support@prompt-shield.se](mailto:support@prompt-shield.se) with:
+Email [support@ai-warden.io](mailto:support@ai-warden.io) with:
 - Content that was blocked
 - Expected behavior
 - Plugin version
@@ -332,10 +408,12 @@ Email [support@prompt-shield.se](mailto:support@prompt-shield.se) with:
 
 ## 🔗 Links
 
-- **Documentation:** [https://prompt-shield.se/openclaw](https://prompt-shield.se/openclaw)
-- **Get API Key:** [https://prompt-shield.se/signup](https://prompt-shield.se/signup)
+- **Website:** [https://ai-warden.io](https://ai-warden.io)
+- **Documentation:** [https://ai-warden.io/docs](https://ai-warden.io/docs)
+- **Get API Key:** [https://ai-warden.io/signup](https://ai-warden.io/signup)
+- **Moltbot Docs:** [https://docs.molt.bot](https://docs.molt.bot)
 - **GitHub:** [https://github.com/ai-warden/openclaw-plugin](https://github.com/ai-warden/openclaw-plugin)
-- **Support:** [support@prompt-shield.se](mailto:support@prompt-shield.se)
+- **Support:** [support@ai-warden.io](mailto:support@ai-warden.io)
 - **Core Package:** [ai-warden on NPM](https://www.npmjs.com/package/ai-warden)
 
 ---
@@ -348,6 +426,8 @@ MIT License - See [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
-Built with ❤️ by [AI-Warden Security](https://prompt-shield.se)
+Built with ❤️ by [AI-Warden Security](https://ai-warden.io)
 
 Powered by the [ai-warden](https://www.npmjs.com/package/ai-warden) core package
+
+**Special thanks to Lars Högberg for 7+ hours of relentless debugging to make v1.0.1 work perfectly!** 🏆
