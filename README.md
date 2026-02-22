@@ -211,6 +211,9 @@ Opens your browser, logs you in, and saves API key to `~/.aiwardenrc` automatica
             "warnThreshold": 100,
             "failOpen": true
           },
+          "pii": {
+            "mode": "ignore"  // Options: "ignore" | "mask" | "remove"
+          },
           "enableStats": true
         }
       }
@@ -243,6 +246,13 @@ plugins:
       blockThreshold: 200    # Score above which content is blocked
       warnThreshold: 100     # Score above which warnings are logged
       cacheSeconds: 300      # Cache TTL
+    
+    # PII Handling (v1.0.3+)
+    pii:
+      mode: ignore       # Options: ignore | mask | remove
+      # ignore: Detect PII but don't modify text (just report)
+      # mask: Replace PII with labels ([EMAIL], [SSN], [CREDIT_CARD])
+      # remove: Delete PII completely from text
     
     # Optional: Output filtering
     output:
@@ -642,6 +652,123 @@ Even secure agents can accidentally leak credentials if prompted cleverly. This 
 - 300s TTL for content hashes
 - LRU eviction (1000 entries)
 - Result: Most requests <10ms
+
+---
+
+## 🔒 PII Detection & Handling (v1.0.3+)
+
+AI-Warden includes **3 PII handling modes** to protect sensitive data:
+
+### **Mode 1: Ignore (Default)**
+Detects PII but doesn't modify text. Just reports findings.
+
+```yaml
+pii:
+  mode: ignore
+```
+
+**Use when:** You want visibility into PII presence without altering content.
+
+**Example:**
+```
+Input:  "Contact: john@example.com, SSN: 123-45-6789"
+Output: "Contact: john@example.com, SSN: 123-45-6789"
+Detected: [EMAIL, SSN] (logged but not modified)
+```
+
+---
+
+### **Mode 2: Mask (Recommended)**
+Replaces PII with labeled placeholders.
+
+```yaml
+pii:
+  mode: mask
+```
+
+**Use when:** You want to preserve text structure while removing sensitive data.
+
+**Example:**
+```
+Input:  "Contact: john@example.com, SSN: 123-45-6789, Card: 5425-2334-3010-9903"
+Output: "Contact: [EMAIL], SSN: [SSN], Card: [CREDIT_CARD]"
+```
+
+**Labels used:**
+- `[EMAIL]` - Email addresses
+- `[SSN]` - US Social Security Numbers
+- `[CREDIT_CARD]` - Credit card numbers
+- `[PHONE]` - Phone numbers
+- `[IP_ADDRESS]` - IPv4/IPv6 addresses
+- `[PERSONNUMMER]` - Swedish personal IDs
+- `[FØDSELSNUMMER]` - Norwegian IDs
+- `[CPR]` - Danish IDs
+- `[HENKILÖTUNNUS]` - Finnish IDs
+- `[IBAN]` - Bank account numbers
+- `[PASSPORT]` - Passport numbers
+- `[DRIVER_LICENSE]` - Driver's licenses
+
+---
+
+### **Mode 3: Remove (Most Aggressive)**
+Completely deletes PII from text.
+
+```yaml
+pii:
+  mode: remove
+```
+
+**Use when:** Strict data protection is required (GDPR, HIPAA compliance).
+
+**Example:**
+```
+Input:  "User: john@test.com, SSN: 456-78-9012, Card: 5425-2334-3010-9903"
+Output: "User: , SSN: , Card: "
+```
+
+**⚠️ Warning:** This mode may break sentence structure. Use with caution.
+
+---
+
+### **Supported PII Types**
+
+| Type | Validation | Countries |
+|------|------------|-----------|
+| **Credit Cards** | Luhn checksum | Visa, Mastercard, Amex, Discover |
+| **SSN** | Format + deny list | 🇺🇸 US |
+| **National IDs** | Luhn + date | 🇸🇪🇳🇴🇩🇰🇫🇮 Nordic countries |
+| **Emails** | RFC 5322 | All |
+| **Phones** | E.164 format | International |
+| **IP Addresses** | Range validation | IPv4 & IPv6 |
+| **IBAN** | Mod-97 checksum | Europe |
+| **Passports** | Format | 🇺🇸 US |
+| **Driver Licenses** | Format | 🇺🇸 US (50 states) |
+
+---
+
+### **Configuration Examples**
+
+**Dashboard Settings (Recommended):**
+1. Go to [https://ai-warden.io/settings](https://ai-warden.io/settings)
+2. Select PII mode from dropdown
+3. Settings sync automatically to plugin
+
+**Plugin Config (Override):**
+```yaml
+plugins:
+  openclaw-plugin:
+    pii:
+      mode: mask  # Override dashboard setting
+```
+
+**Programmatic (NPM Package):**
+```javascript
+const { PIIDetector, PII_MODES } = require('ai-warden/src/pii');
+
+const detector = new PIIDetector({ mode: PII_MODES.MASK });
+const result = detector.detect('Email: test@example.com');
+console.log(result.modified); // "Email: [EMAIL]"
+```
 
 ---
 
