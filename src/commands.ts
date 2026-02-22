@@ -23,11 +23,15 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
   api.registerCommand?.({
     name: 'warden',
     description: 'AI-Warden security control panel',
-    handler: async (args: string[]) => {
+    handler: async (args: any) => {
       try {
         console.log('[AI-Warden] /warden handler called with args:', args);
         
-        if (!args || args.length === 0 || !args[0]) {
+        // Moltbot passes object with args array nested inside
+        const argsArray = Array.isArray(args) ? args : (args?.args || []);
+        console.log('[AI-Warden] Extracted args array:', argsArray);
+        
+        if (!argsArray || argsArray.length === 0 || !argsArray[0]) {
           const response = [
             '🛡️ **AI-Warden Control Panel**',
             '',
@@ -49,7 +53,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
           return response;
         }
         
-        const subcommand = args[0].toLowerCase();
+        const subcommand = argsArray[0].toLowerCase();
         let result;
         
         switch (subcommand) {
@@ -62,7 +66,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             break;
           
           case 'layer':
-            result = handleLayerToggle(args.slice(1), stateManager);
+            result = handleLayerToggle(argsArray.slice(1), stateManager);
             break;
           
           case 'health':
