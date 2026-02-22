@@ -33,9 +33,6 @@
     "url": "https://github.com/ai-warden/openclaw-plugin/issues"
   },
   "homepage": "https://prompt-shield.se/openclaw",
-  "peerDependencies": {
-    "openclaw": ">=0.50.0"
-  },
   "dependencies": {
     "ai-warden": "^1.0.0"
   },
