@@ -16,6 +16,9 @@ const LAYER_NAMES: Record<string, string> = {
 
 export function registerWardenCommands(api: any, config: SecurityConfig, stateManager: StateManager) {
   
+  console.log('[AI-Warden] Registering /warden command, api.registerCommand exists:', !!api.registerCommand);
+  console.log('[AI-Warden] Available API methods:', Object.keys(api));
+  
   // Main /warden command - Show menu
   api.registerCommand?.({
     name: 'warden',
