@@ -82,7 +82,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             break;
           
           default:
-            return `❌ Unknown command: ${subcommand}\n\nUse \`/warden help\` for available commands.`;
+            return { text: `❌ Unknown command: ${subcommand}\n\nUse \`/warden help\` for available commands.` };
         }
         
         // Extract text from result object if needed  
