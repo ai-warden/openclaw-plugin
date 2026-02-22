@@ -21,6 +21,9 @@ export interface SecurityConfig {
   /** Enable verbose logging */
   verbose?: boolean;
   
+  /** Enable statistics tracking and reporting */
+  enableStats?: boolean;
+  
   /** Which security layers to enable */
   layers: {
     /** Layer 0: Content validation (web_fetch, browser, read) - CRITICAL */
