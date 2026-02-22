@@ -25,8 +25,10 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
     description: 'AI-Warden security control panel',
     handler: async (args: string[]) => {
       try {
+        console.log('[AI-Warden] /warden handler called with args:', args);
+        
         if (!args || args.length === 0 || !args[0]) {
-          return [
+          const response = [
             '🛡️ **AI-Warden Control Panel**',
             '',
             '**Commands:**',
@@ -43,6 +45,8 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             '',
             'Powered by AI-Warden | https://ai-warden.io'
           ].join('\n');
+          console.log('[AI-Warden] Returning help text, length:', response.length);
+          return response;
         }
         
         const subcommand = args[0].toLowerCase();
@@ -78,10 +82,14 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
         }
         
         // Extract text from result object if needed
-        return typeof result === 'string' ? result : result.text;
+        const finalResult = typeof result === 'string' ? result : result.text;
+        console.log('[AI-Warden] Returning result, type:', typeof finalResult, 'length:', finalResult?.length);
+        return finalResult;
       } catch (error) {
         console.error('[AI-Warden] /warden command error:', error);
-        return `❌ Command error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        const errorMsg = `❌ Command error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.log('[AI-Warden] Returning error:', errorMsg);
+        return errorMsg;
       }
     }
   });
