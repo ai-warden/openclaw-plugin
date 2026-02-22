@@ -37,10 +37,11 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
         if (Array.isArray(args)) {
           argsArray = args;
         } else if (typeof args === 'string') {
-          argsArray = args ? [args] : [];
+          // Split string on whitespace to handle multi-word commands
+          argsArray = args ? args.trim().split(/\s+/) : [];
         } else if (args?.args) {
           // args.args can be string or array
-          argsArray = typeof args.args === 'string' ? [args.args] : args.args;
+          argsArray = typeof args.args === 'string' ? args.args.trim().split(/\s+/) : args.args;
         } else if (args?.commandBody) {
           // Parse from commandBody as fallback
           const parts = args.commandBody.trim().split(/\s+/);
