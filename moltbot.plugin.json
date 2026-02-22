@@ -12,5 +12,47 @@
   },
   "bugs": {
     "url": "https://github.com/ai-warden/openclaw-plugin/issues"
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "apiKey": {
+        "type": "string"
+      },
+      "layers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content": { "type": "boolean" },
+          "channel": { "type": "boolean" },
+          "preLlm": { "type": "boolean" },
+          "toolArgs": { "type": "boolean" },
+          "subagents": { "type": "boolean" },
+          "output": { "type": "boolean" }
+        }
+      },
+      "policy": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "blockThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "warnThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "failOpen": { "type": "boolean" }
+        }
+      },
+      "enableStats": { "type": "boolean" }
+    }
   }
 }
