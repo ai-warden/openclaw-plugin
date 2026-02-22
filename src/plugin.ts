@@ -17,7 +17,27 @@ import { registerWardenCommands } from './commands.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
-  const config = api.pluginConfig as SecurityConfig;
+  // Plugin config with defaults (Moltbot may pass undefined/empty config)
+  const config: SecurityConfig = {
+    layers: {
+      content: true,
+      channel: true,
+      preLlm: false,
+      toolArgs: true,
+      subagents: true,
+      output: true,
+      ...(api.pluginConfig?.layers || {})
+    },
+    policy: {
+      blockThreshold: 200,
+      warnThreshold: 100,
+      failOpen: true,
+      ...(api.pluginConfig?.policy || {})
+    },
+    apiKey: api.pluginConfig?.apiKey,
+    verbose: api.pluginConfig?.verbose || false,
+    enableStats: api.pluginConfig?.enableStats !== false
+  };
   
   // Initialize state manager (runtime config + stats)
   const stateManager = new StateManager(config.layers);
