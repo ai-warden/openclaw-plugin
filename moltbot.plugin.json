@@ -1,0 +1,16 @@
+{
+  "id": "ai-warden",
+  "name": "AI-Warden Security",
+  "version": "1.0.1",
+  "description": "Multi-layer security validation for AI agents",
+  "author": "AI-Warden",
+  "license": "MIT",
+  "homepage": "https://github.com/ai-warden/openclaw-plugin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ai-warden/openclaw-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ai-warden/openclaw-plugin/issues"
+  }
+}

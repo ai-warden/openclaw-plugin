@@ -1,9 +1,12 @@
 {
   "name": "@ai-warden/openclaw-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-Warden security integration for OpenClaw - Multi-layer defense against prompt injection, command injection, and data leakage",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "moltbot": {
+    "extensions": ["./index.ts"]
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
