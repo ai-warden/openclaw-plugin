@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-02-22
+
+### Fixed
+- **Critical:** Added `moltbot.plugin.json` manifest for Moltbot plugin discovery
+- **Critical:** Added root `index.ts` entry point with proper export format
+- **Critical:** Updated `package.json` with `moltbot.extensions` field (string array)
+- Plugin now discovered and loaded automatically in Moltbot/OpenClaw
+
+### Changed
+- Updated version to 1.0.1
+- Improved installation documentation with Moltbot-specific instructions
+
+### Technical Details
+Fixed 6 root causes identified during 4.5h debugging session:
+1. Missing `moltbot.plugin.json` (discovery manifest required)
+2. Missing root `index.ts` (entry point must be in plugin root)
+3. Wrong `package.json` format (moltbot.extensions expects string array)
+4. Symlink discovery issue (Moltbot skips symlinks for security)
+5. Export format mismatch (requires object with id/name/configSchema/register)
+6. TypeScript loader compatibility (proper import from src/)
+
+**Installation now works first try!** ✅
+
+```bash
+cd /moltbot-src/extensions
+git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
+cd ai-warden && npm install && npm run build
+# Restart Moltbot → Auto-discovered!
+```
+
+---
+
 ## [1.0.0] - 2026-02-21
 
 ### Added
