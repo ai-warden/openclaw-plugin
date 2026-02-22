@@ -14,6 +14,7 @@ import { SecurityValidator } from './validator.js';
 import { createSecureWebFetchWrapper } from './tools/web-fetch-secure.js';
 import { StateManager } from './state-manager.js';
 import { registerWardenCommands } from './commands.js';
+import { PIIHandler } from './pii-handler.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
@@ -41,6 +42,9 @@ export default function aiWardenPlugin(api: any) {
   
   // Initialize state manager (runtime config + stats)
   const stateManager = new StateManager(config.layers);
+  
+  // Initialize PII handler with default mode
+  const piiHandler = new PIIHandler(config.output?.piiMode || 'mask');
   
   // API down notification handler
   const notifyApiDown = (message: string) => {
@@ -255,25 +259,44 @@ export default function aiWardenPlugin(api: any) {
     if (!stateManager.isLayerEnabled('output')) {
       return;
     }
+    
+    if (config.verbose) {
+      console.log('[AI-Warden] Layer 5: Filtering output');
+    }
+    
+    // Update PII handler mode from runtime state
+    piiHandler.setMode(stateManager.getPIIMode());
+    
+    // Process PII first
+    const piiResult = piiHandler.process(event.content);
+    let content = piiResult.modified;
+    
+    // Record PII detection
+    if (piiResult.hasPII) {
+      stateManager.recordPII(piiResult.count, piiResult.types);
+      
       if (config.verbose) {
-        console.log('[AI-Warden] Layer 5: Filtering output');
+        console.log(`[AI-Warden] Detected ${piiResult.count} PII items (mode: ${stateManager.getPIIMode()})`);
+      }
+    }
+    
+    // Then apply legacy filtering (API keys, emails, paths)
+    const filtered = await validator.filterOutput(content);
+    
+    // Record scan (always log output filtering)
+    stateManager.recordScan({
+      layer: 'output',
+      blocked: filtered.modified || piiResult.hasPII
+    });
+    
+    if (filtered.modified || piiResult.hasPII) {
+      if (config.verbose) {
+        const items = (filtered.matches?.length || 0) + piiResult.count;
+        console.log(`[AI-Warden] Processed ${items} items from output`);
       }
       
-      const filtered = await validator.filterOutput(event.content);
-      
-      // Record scan (always log output filtering)
-      stateManager.recordScan({
-        layer: 'output',
-        blocked: filtered.modified
-      });
-      
-      if (filtered.modified) {
-        if (config.verbose) {
-          console.log(`[AI-Warden] Redacted ${filtered.matches?.length || 0} items from output`);
-        }
-        
-        return { content: filtered.content };
-      }
+      return { content: filtered.content };
+    }
   });
   
   // ========================================================================

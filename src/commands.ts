@@ -66,6 +66,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             '**Quick Actions:**',
             '• `/warden layer channel off` - Disable channel scanning (save API calls)',
             '• `/warden layer channel on` - Enable channel scanning',
+            '• `/warden pii mask` - Mask PII with labels',
             '',
             'Powered by AI-Warden | https://ai-warden.io'
           ].join('\n');
@@ -87,6 +88,10 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
           
           case 'layer':
             result = handleLayerToggle(argsArray.slice(1), stateManager);
+            break;
+          
+          case 'pii':
+            result = handlePII(argsArray.slice(1), stateManager);
             break;
           
           case 'health':
@@ -294,7 +299,120 @@ function handleHelp(): { text: string } {
       '**Typical Savings:**',
       'Disabling channel layer in private chats = **30-50% fewer API calls** 💰',
       '',
-      'Learn more: https://prompt-shield.se/openclaw'
+      'Learn more: https://ai-warden.io/docs'
     ].join('\n')
   };
+}
+
+function handlePII(args: string[], stateManager: StateManager): { text: string } {
+  // No args = show status
+  if (args.length === 0) {
+    const currentMode = stateManager.getPIIMode();
+    const stats = stateManager.getPIIStats();
+    
+    const modeDescriptions = {
+      'ignore': '**IGNORE** - Detect PII but don\'t modify text (just report)',
+      'mask': '**MASK** - Replace PII with labeled placeholders ([EMAIL], [SSN], etc.)',
+      'remove': '**REMOVE** - Delete PII completely from text'
+    };
+    
+    const lines = [
+      '🔒 **PII Detection Settings**',
+      '',
+      `**Current Mode:** ${currentMode.toUpperCase()}`,
+      modeDescriptions[currentMode],
+      ''
+    ];
+    
+    if (currentMode === 'mask') {
+      lines.push(
+        '**Masking Examples:**',
+        '• john@example.com → `[EMAIL]`',
+        '• 123-45-6789 → `[SSN]`',
+        '• 4532-1234-5678-9010 → `[CREDIT_CARD]`',
+        '• +1-555-123-4567 → `[PHONE]`',
+        ''
+      );
+    }
+    
+    lines.push(
+      '**Statistics (Layer 5):**',
+      `• Total outputs scanned: ${stats.totalScans}`,
+      `• PII detected: ${stats.piiDetected} times`,
+      `• Items processed: ${stats.itemsProcessed}`,
+      ''
+    );
+    
+    if (Object.keys(stats.byType).length > 0) {
+      lines.push('**Detected PII Types:**');
+      for (const [type, count] of Object.entries(stats.byType)) {
+        lines.push(`• ${type}: ${count}`);
+      }
+      lines.push('');
+    }
+    
+    lines.push(
+      '**Supported PII Types:**',
+      '✅ Credit Cards (Visa, MC, Amex, Discover)',
+      '✅ US SSN',
+      '✅ Emails',
+      '✅ Phone Numbers (US + international)',
+      '✅ IP Addresses',
+      '✅ Nordic IDs (🇸🇪🇳🇴🇩🇰🇫🇮)',
+      '✅ IBAN',
+      '✅ US Passports',
+      '✅ Driver Licenses (50 states)',
+      '',
+      '**Change mode:**',
+      '`/warden pii ignore` - Detect only (no modification)',
+      '`/warden pii mask` - Replace with labels (recommended)',
+      '`/warden pii remove` - Delete PII completely'
+    );
+    
+    return { text: lines.join('\n') };
+  }
+  
+  // Set mode
+  const mode = args[0].toLowerCase();
+  
+  if (mode !== 'ignore' && mode !== 'mask' && mode !== 'remove') {
+    return {
+      text: `❌ Invalid PII mode: ${mode}\n\nValid modes: \`ignore\`, \`mask\`, \`remove\``
+    };
+  }
+  
+  stateManager.setPIIMode(mode as 'ignore' | 'mask' | 'remove');
+  
+  const responses = {
+    'ignore': [
+      '✅ **PII mode set to IGNORE**',
+      '',
+      'PII will be detected but text won\'t be modified.',
+      'Useful for debugging or when you trust all outputs.',
+      '',
+      '**Note:** Detection stats are still tracked.'
+    ],
+    'mask': [
+      '✅ **PII mode set to MASK**',
+      '',
+      'PII will be replaced with labeled placeholders:',
+      '• john@example.com → `[EMAIL]`',
+      '• 123-45-6789 → `[SSN]`',
+      '• 4532-1234-5678-9010 → `[CREDIT_CARD]`',
+      '',
+      '**Recommended for most use cases** - preserves context while protecting data.'
+    ],
+    'remove': [
+      '✅ **PII mode set to REMOVE**',
+      '',
+      'PII will be completely deleted from text.',
+      '',
+      '**Warning:** May create awkward gaps in sentences.',
+      'Example: "Email me at john@example.com" → "Email me at "',
+      '',
+      'Use when maximum data protection is required.'
+    ]
+  };
+  
+  return { text: responses[mode].join('\n') };
 }

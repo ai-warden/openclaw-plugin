@@ -76,7 +76,17 @@ export interface SecurityConfig {
     redactEmails: boolean;
     redactApiKeys: boolean;
     redactPaths: boolean;
+    /** PII handling mode: "ignore" (detect only), "mask" (replace with labels), "remove" (delete) */
+    piiMode?: 'ignore' | 'mask' | 'remove';
   };
+}
+
+/** PII detection statistics */
+export interface PIIStats {
+  totalScans: number;
+  piiDetected: number;
+  itemsProcessed: number;
+  byType: Record<string, number>;
 }
 
 export interface ScanResult {

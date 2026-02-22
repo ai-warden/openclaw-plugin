@@ -33,12 +33,23 @@ interface SecurityStats {
     reason: string;
     score: number;
   }>;
+  pii?: {
+    totalScans: number;
+    piiDetected: number;
+    itemsProcessed: number;
+    byType: Record<string, number>;
+  };
+}
+
+interface RuntimeState {
+  piiMode?: 'ignore' | 'mask' | 'remove';
 }
 
 export class StateManager {
   private statePath: string;
   private layerState: LayerState;
   private stats: SecurityStats;
+  private runtimeState: RuntimeState;
   private saveDebounce: NodeJS.Timeout | null = null;
   private apiDownNotified: boolean = false;
   private lastApiError: number = 0;
@@ -56,8 +67,17 @@ export class StateManager {
       scansPassed: 0,
       lastReset: Date.now(),
       byLayer: {},
-      recentBlocks: []
+      recentBlocks: [],
+      pii: {
+        totalScans: 0,
+        piiDetected: 0,
+        itemsProcessed: 0,
+        byType: {}
+      }
     };
+    
+    // Initialize runtime state
+    this.runtimeState = {};
     
     // Load persisted state
     this.load();
@@ -286,5 +306,59 @@ export class StateManager {
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
     return `${seconds}s ago`;
+  }
+  
+  /**
+   * Get PII mode (runtime or default)
+   */
+  getPIIMode(): 'ignore' | 'mask' | 'remove' {
+    return this.runtimeState.piiMode || 'mask'; // Default: mask
+  }
+  
+  /**
+   * Set PII mode
+   */
+  setPIIMode(mode: 'ignore' | 'mask' | 'remove'): void {
+    this.runtimeState.piiMode = mode;
+    this.save();
+  }
+  
+  /**
+   * Record PII detection
+   */
+  recordPII(count: number, types: Record<string, number>): void {
+    if (!this.stats.pii) {
+      this.stats.pii = {
+        totalScans: 0,
+        piiDetected: 0,
+        itemsProcessed: 0,
+        byType: {}
+      };
+    }
+    
+    this.stats.pii.totalScans++;
+    if (count > 0) {
+      this.stats.pii.piiDetected++;
+      this.stats.pii.itemsProcessed += count;
+      
+      // Aggregate by type
+      for (const [type, typeCount] of Object.entries(types)) {
+        this.stats.pii.byType[type] = (this.stats.pii.byType[type] || 0) + typeCount;
+      }
+    }
+    
+    this.save();
+  }
+  
+  /**
+   * Get PII statistics
+   */
+  getPIIStats() {
+    return this.stats.pii || {
+      totalScans: 0,
+      piiDetected: 0,
+      itemsProcessed: 0,
+      byType: {}
+    };
   }
 }
