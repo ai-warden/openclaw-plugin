@@ -24,9 +24,9 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
     name: 'warden',
     description: 'AI-Warden security control panel',
     handler: async (args: string[]) => {
-      if (args.length === 0) {
-        return {
-          text: [
+      try {
+        if (args.length === 0) {
+          return [
             '🛡️ **AI-Warden Control Panel**',
             '',
             '**Commands:**',
@@ -41,36 +41,47 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
             '• `/warden layer channel off` - Disable channel scanning (save API calls)',
             '• `/warden layer channel on` - Enable channel scanning',
             '',
-            'Powered by AI-Warden | https://prompt-shield.se'
-          ].join('\n')
-        };
-      }
-      
-      const subcommand = args[0].toLowerCase();
-      
-      switch (subcommand) {
-        case 'status':
-          return handleStatus(stateManager, config);
+            'Powered by AI-Warden | https://ai-warden.io'
+          ].join('\n');
+        }
         
-        case 'stats':
-          return handleStats(stateManager);
+        const subcommand = args[0].toLowerCase();
+        let result;
         
-        case 'layer':
-          return handleLayerToggle(args.slice(1), stateManager);
+        switch (subcommand) {
+          case 'status':
+            result = handleStatus(stateManager, config);
+            break;
+          
+          case 'stats':
+            result = handleStats(stateManager);
+            break;
+          
+          case 'layer':
+            result = handleLayerToggle(args.slice(1), stateManager);
+            break;
+          
+          case 'health':
+            result = handleHealth(stateManager);
+            break;
+          
+          case 'reset':
+            result = handleReset(stateManager);
+            break;
+          
+          case 'help':
+            result = handleHelp();
+            break;
+          
+          default:
+            return `❌ Unknown command: ${subcommand}\n\nUse \`/warden help\` for available commands.`;
+        }
         
-        case 'health':
-          return handleHealth(stateManager);
-        
-        case 'reset':
-          return handleReset(stateManager);
-        
-        case 'help':
-          return handleHelp();
-        
-        default:
-          return {
-            text: `❌ Unknown command: ${subcommand}\n\nUse \`/warden help\` for available commands.`
-          };
+        // Extract text from result object if needed
+        return typeof result === 'string' ? result : result.text;
+      } catch (error) {
+        console.error('[AI-Warden] /warden command error:', error);
+        return `❌ Command error: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     }
   });
