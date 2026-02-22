@@ -18,7 +18,7 @@ import aiWardenPlugin from './src/plugin.js';
  * Required fields: id, name, configSchema, register
  */
 export default {
-  id: 'ai-warden',
+  id: 'openclaw-plugin',
   name: 'AI-Warden Security',
   description: 'Multi-layer security validation for AI agents',
   version: '1.0.1',

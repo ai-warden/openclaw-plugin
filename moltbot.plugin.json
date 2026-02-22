@@ -1,5 +1,5 @@
 {
-  "id": "ai-warden",
+  "id": "openclaw-plugin",
   "name": "AI-Warden Security",
   "version": "1.0.1",
   "description": "Multi-layer security validation for AI agents",
