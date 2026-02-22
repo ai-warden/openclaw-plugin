@@ -2,9 +2,10 @@
 
 **Multi-layer security defense for Moltbot/OpenClaw AI agents**
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue)](https://github.com/ai-warden/openclaw-plugin)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/ai-warden/openclaw-plugin)
 [![Status](https://img.shields.io/badge/status-production-green)](https://ai-warden.io)
 [![Moltbot](https://img.shields.io/badge/moltbot-compatible-purple)](https://docs.molt.bot)
+[![PII Detection](https://img.shields.io/badge/PII-Detection-orange)](https://ai-warden.io)
 
 Protect your Moltbot instance from:
 - ✅ Prompt injection attacks (indirect via web_fetch, browser, read)
@@ -12,6 +13,7 @@ Protect your Moltbot instance from:
 - ✅ Privilege escalation (subagent spawning)
 - ✅ Data leakage (API keys, PII, credentials)
 - ✅ Social engineering attacks (channel messages)
+- ✅ **NEW:** PII detection & masking (emails, SSN, credit cards, etc.)
 
 ## 🚀 Quick Start
 
@@ -398,6 +400,48 @@ Full protection - you don't trust everyone.
 
 **Typical Savings:**  
 Disabling `channel` layer in private chats = **30-50% fewer API calls** 💰
+
+### PII Detection Control (v1.1.0+)
+
+Manage how Personally Identifiable Information (PII) is handled in outputs:
+
+```
+/warden pii                # Show current PII mode & statistics
+/warden pii ignore         # Detect PII but don't modify text
+/warden pii mask           # Replace PII with labels (recommended)
+/warden pii remove         # Delete PII completely
+```
+
+**Example output:**
+```
+🔒 PII Detection Settings
+
+Current Mode: MASK
+• john@example.com → [EMAIL]
+• 123-45-6789 → [SSN]  
+• 4532-1234-5678-9010 → [CREDIT_CARD]
+
+Statistics (Layer 5):
+• Total outputs scanned: 156
+• PII detected: 12 times
+• Items masked: 18
+
+Supported PII Types:
+✅ Credit Cards (Visa, MC, Amex, Discover)
+✅ US SSN
+✅ Emails
+✅ Phone Numbers (US + international)
+✅ IP Addresses
+✅ Nordic IDs (🇸🇪🇳🇴🇩🇰🇫🇮)
+✅ IBAN
+✅ US Passports
+✅ Driver Licenses (50 states)
+```
+
+**Use cases:**
+- **mask** (default): Privacy protection while preserving context
+- **ignore**: Debugging or trusted environments
+- **remove**: Maximum data protection (may create gaps in text)
 
 ---
 
