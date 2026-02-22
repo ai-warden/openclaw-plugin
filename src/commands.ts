@@ -28,14 +28,25 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
       try {
         console.log('[AI-Warden] /warden handler called with args:', JSON.stringify(args, null, 2));
         
-        // Moltbot passes object with args array nested inside
-        // But commandBody may contain the full text: "/warden status"
-        let argsArray = Array.isArray(args) ? args : (args?.args || []);
+        // Moltbot can pass args in different formats:
+        // 1. Array: ["status"]
+        // 2. String: "status"  
+        // 3. Object: {args: "status", commandBody: "/warden status", ...}
+        let argsArray: string[];
         
-        // If args is empty but commandBody exists, parse it
-        if (argsArray.length === 0 && args?.commandBody) {
+        if (Array.isArray(args)) {
+          argsArray = args;
+        } else if (typeof args === 'string') {
+          argsArray = args ? [args] : [];
+        } else if (args?.args) {
+          // args.args can be string or array
+          argsArray = typeof args.args === 'string' ? [args.args] : args.args;
+        } else if (args?.commandBody) {
+          // Parse from commandBody as fallback
           const parts = args.commandBody.trim().split(/\s+/);
-          argsArray = parts.slice(1); // Skip first part ("/warden")
+          argsArray = parts.slice(1); // Skip "/warden"
+        } else {
+          argsArray = [];
         }
         
         console.log('[AI-Warden] Extracted args array:', argsArray);
