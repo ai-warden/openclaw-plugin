@@ -25,7 +25,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
     description: 'AI-Warden security control panel',
     handler: async (args: string[]) => {
       try {
-        if (args.length === 0) {
+        if (!args || args.length === 0 || !args[0]) {
           return [
             '🛡️ **AI-Warden Control Panel**',
             '',
