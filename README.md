@@ -17,7 +17,19 @@ Protect your Moltbot instance from:
 
 ## 🚀 Quick Start
 
-### Step 1: Installation
+### ⚡ One-Line Install (Linux/macOS Native)
+
+Auto-detects Moltbot or Clawdbot and installs to the correct location:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ai-warden/openclaw-plugin/main/install.sh | bash
+```
+
+Then restart: `moltbot gateway restart` and test with `/warden`!
+
+---
+
+### Step 1: Manual Installation
 
 Choose your platform:
 
