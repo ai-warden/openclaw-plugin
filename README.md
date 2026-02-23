@@ -104,23 +104,30 @@ journalctl -u moltbot -f | grep AI-Warden
 <summary><b>🍎 macOS (Native Install)</b></summary>
 
 ```bash
-# Navigate to Moltbot extensions directory
+# Navigate to extensions directory
+# For Moltbot (newer):
 cd ~/.moltbot/extensions
+# For Clawdbot (older installs):
+# cd ~/.clawdbot/extensions
 
 # Clone and build
 git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
 cd ai-warden
-npm install
+npm install  # Installs plugin dependencies (ai-warden, etc)
 npm run build
 
 # Verify files exist
 ls -la moltbot.plugin.json index.ts
 
-# Restart Moltbot
+# Restart
 moltbot gateway restart
 
 # Verify in logs
+# For Moltbot:
 tail -f ~/.moltbot/logs/moltbot.log | grep AI-Warden
+# For Clawdbot:
+# tail -f ~/.clawdbot/logs/moltbot.log | grep AI-Warden
+
 # Expected: [AI-Warden] Plugin initialized with runtime layer control
 ```
 
