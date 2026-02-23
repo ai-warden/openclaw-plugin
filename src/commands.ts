@@ -24,6 +24,7 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
     name: 'warden',
     description: 'AI-Warden security control panel',
     acceptsArgs: true,  // Enable argument parsing
+    requireAuth: false,  // Allow all users (security commands should be accessible)
     handler: async (args: any) => {
       try {
         console.log('[AI-Warden] /warden handler called with args:', JSON.stringify(args, null, 2));
