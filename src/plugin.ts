@@ -79,12 +79,11 @@ export default function aiWardenPlugin(api: any) {
   api.on('message_received', async (event: any, ctx: any) => {
     // Check if layer is enabled (runtime toggle)
     if (!stateManager.isLayerEnabled('channel')) {
+      console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
       return; // Layer disabled, skip scan
     }
     
-    if (config.verbose) {
-      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}`);
-    }
+    console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content.substring(0, 50)}..."`);
     
     const result = await validator.scanContent({
       content: event.content,
