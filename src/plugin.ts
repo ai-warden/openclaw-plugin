@@ -68,6 +68,11 @@ export default function aiWardenPlugin(api: any) {
   const validator = new SecurityValidator(config, notifyApiDown);
   
   // Log initialization
+  console.log('[AI-Warden] Plugin initialized with runtime layer control');
+  console.log('[AI-Warden] Verbose mode:', config.verbose);
+  console.log('[AI-Warden] Layers:', JSON.stringify(config.layers));
+  console.log('[AI-Warden] API object methods:', Object.keys(api).filter(k => typeof api[k] === 'function'));
+  
   if (config.verbose) {
     console.log('[AI-Warden] Plugin initialized with layers:', config.layers);
   }
@@ -76,53 +81,64 @@ export default function aiWardenPlugin(api: any) {
   // LAYER 1: Channel Input Validation
   // ========================================================================
   
+  console.log('[AI-Warden] 📝 Registering message_received hook...');
+  
   api.on('message_received', async (event: any, ctx: any) => {
-    console.log('[AI-Warden] 🔔 message_received event triggered!', { content: event.content?.substring(0, 30) });
-    
-    // Check if layer is enabled (runtime toggle)
-    if (!stateManager.isLayerEnabled('channel')) {
-      console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
-      return; // Layer disabled, skip scan
-    }
-    
-    if (config.verbose) {
-      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content.substring(0, 50)}..."`);
-    }
-    
-    const result = await validator.scanContent({
-      content: event.content,
-      source: 'channel',
-      metadata: { channelId: ctx.channelId, userId: ctx.userId }
-    });
-    
-    // AI-Warden returns: safe (boolean), risk (0-100)
-    // safe: false = attack detected by AI-Warden's logic
-    const shouldBlock = !result.safe;
-    
-    if (config.verbose) {
-      console.log(`[AI-Warden] Layer 1 result: safe=${result.safe}, risk=${result.risk}, shouldBlock=${shouldBlock}`);
-    }
-    
-    // Record scan
-    stateManager.recordScan({
-      layer: 'channel',
-      blocked: shouldBlock,
-      score: result.risk || 0,
-      reason: result.message
-    });
-    
-    if (shouldBlock) {
-      const blockMessage = (result.risk || 0) > 50
-        ? '[AI-Warden] Message blocked by security policy'
-        : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
+    try {
+      console.log('[AI-Warden] 🔔 message_received event triggered!', { content: event.content?.substring(0, 30) });
       
-      // Try return first (if hook supports it)
-      return {
-        block: true,
-        blockReason: blockMessage
-      };
+      // Check if layer is enabled (runtime toggle)
+      if (!stateManager.isLayerEnabled('channel')) {
+        console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
+        return; // Layer disabled, skip scan
+      }
+      
+      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content?.substring(0, 50)}..."`);
+      
+      const result = await validator.scanContent({
+        content: event.content,
+        source: 'channel',
+        metadata: { channelId: ctx.channelId, userId: ctx.userId }
+      });
+      
+      console.log('[AI-Warden] Scan completed, result:', { safe: result.safe, risk: result.risk });
+    
+      // AI-Warden returns: safe (boolean), risk (0-100)
+      // safe: false = attack detected by AI-Warden's logic
+      const shouldBlock = !result.safe;
+      
+      console.log(`[AI-Warden] Layer 1 result: safe=${result.safe}, risk=${result.risk}, shouldBlock=${shouldBlock}`);
+      
+      // Record scan
+      stateManager.recordScan({
+        layer: 'channel',
+        blocked: shouldBlock,
+        score: result.risk || 0,
+        reason: result.message
+      });
+      
+      if (shouldBlock) {
+        const blockMessage = (result.risk || 0) > 50
+          ? '[AI-Warden] Message blocked by security policy'
+          : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
+        
+        console.log('[AI-Warden] ⛔️ BLOCKING MESSAGE:', blockMessage);
+        
+        // Try return first (if hook supports it)
+        return {
+          block: true,
+          blockReason: blockMessage
+        };
+      }
+      
+      console.log('[AI-Warden] ✅ Message passed validation');
+    } catch (error) {
+      console.error('[AI-Warden] ❌ Layer 1 handler error:', error);
+      throw error;
     }
   });
+  
+  console.log('[AI-Warden] ✅ message_received hook registered');
   
   // ========================================================================
   // LAYER 2: Pre-LLM Gateway (Context Analysis)
@@ -200,7 +216,11 @@ export default function aiWardenPlugin(api: any) {
   // LAYER 3: Tool Argument Validation
   // ========================================================================
   
+  console.log('[AI-Warden] 📝 Registering before_tool_call hook (Layer 3)...');
+  
   api.on('before_tool_call', async (event: any, ctx: any) => {
+    console.log('[AI-Warden] 🔧 before_tool_call triggered for tool:', event.toolName);
+    
     if (!stateManager.isLayerEnabled('toolArgs')) {
       return;
     }
