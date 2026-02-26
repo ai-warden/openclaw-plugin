@@ -116,7 +116,7 @@ export class SecurityValidator {
     
     // Call AI-Warden API
     try {
-      const apiResult = await this.warden.validate(content, {
+      const apiResult: any = await this.warden.validate(content, {
         context: source,
         metadata
       });
