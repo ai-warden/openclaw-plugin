@@ -10,7 +10,7 @@
 
 ```bash
 cd /path/to/your/openclaw
-npm install @ai-warden/openclaw-plugin
+npm install @ai-warden-tech/openclaw-plugin
 ```
 
 ## Step 2: Get API Key (Choose One)
@@ -200,10 +200,10 @@ Then review logs and report false positives to support@prompt-shield.se
 
 ```bash
 # 1. Update plugin
-npm update @ai-warden/openclaw-plugin
+npm update @ai-warden-tech/openclaw-plugin
 
 # 2. Check changelog
-cat node_modules/@ai-warden/openclaw-plugin/CHANGELOG.md
+cat node_modules/@ai-warden-tech/openclaw-plugin/CHANGELOG.md
 
 # 3. Update config if needed (breaking changes)
 
@@ -225,7 +225,7 @@ openclaw gateway restart
 openclaw gateway restart
 
 # 3. (Optional) Remove package
-npm uninstall @ai-warden/openclaw-plugin
+npm uninstall @ai-warden-tech/openclaw-plugin
 ```
 
 ---

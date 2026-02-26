@@ -176,7 +176,7 @@ Get-Content $env:USERPROFILE\.moltbot\logs\moltbot.log -Tail 50 | Select-String 
 <summary><b>📦 NPM (For developers / custom builds)</b></summary>
 
 ```bash
-npm install @ai-warden/openclaw-plugin
+npm install @ai-warden-tech/openclaw-plugin
 ```
 
 Then configure in your Moltbot config file.

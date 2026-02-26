@@ -9,7 +9,7 @@ A **production-ready OpenClaw security plugin** that implements the 6-layer defe
 ## 📦 Package Structure
 
 ```
-@ai-warden/openclaw-plugin/
+@ai-warden-tech/openclaw-plugin/
 ├── src/
 │   ├── index.ts                    # Plugin definition & exports
 │   ├── plugin.ts                   # Hook handlers (Layers 1-5)
@@ -97,7 +97,7 @@ A **production-ready OpenClaw security plugin** that implements the 6-layer defe
 
 **Dependency Flow:**
 ```
-@ai-warden/openclaw-plugin
+@ai-warden-tech/openclaw-plugin
   └── ai-warden (core package)
       └── Performs actual scanning/validation
 ```
@@ -188,7 +188,7 @@ A **production-ready OpenClaw security plugin** that implements the 6-layer defe
   
   # Use in OpenClaw
   cd /path/to/openclaw
-  npm link @ai-warden/openclaw-plugin
+  npm link @ai-warden-tech/openclaw-plugin
   
   # Configure & test
   vim config.yaml
@@ -253,7 +253,7 @@ npm publish --access public
 
 ### Distribution Channels
 
-1. **NPM Registry** (`npm install @ai-warden/openclaw-plugin`)
+1. **NPM Registry** (`npm install @ai-warden-tech/openclaw-plugin`)
 2. **ClawdHub** (OpenClaw plugin marketplace)
 3. **GitHub Marketplace** (if applicable)
 4. **Prompt-Shield Website** (openclaw page)
@@ -285,7 +285,7 @@ npm publish --access public
 
 ## 🔗 Important Links
 
-- **NPM Package:** https://www.npmjs.com/package/@ai-warden/openclaw-plugin (pending)
+- **NPM Package:** https://www.npmjs.com/package/@ai-warden-tech/openclaw-plugin (pending)
 - **Core Package:** https://www.npmjs.com/package/ai-warden (published)
 - **GitHub Repo:** https://github.com/ai-warden/openclaw-plugin (create)
 - **Documentation:** https://prompt-shield.se/openclaw
