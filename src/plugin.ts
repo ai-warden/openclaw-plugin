@@ -81,174 +81,153 @@ export default function aiWardenPlugin(api: any) {
   // LAYER 1: Channel Input Validation
   // ========================================================================
   
-  console.log('[AI-Warden] 📝 Registering message_received hook...');
-  
-  api.on('message_received', async (event: any, ctx: any) => {
-    console.log('[AI-Warden] 🔔 message_received event triggered!');
-    console.log('[AI-Warden] Event object:', JSON.stringify(event, null, 2));
-    console.log('[AI-Warden] Context object:', JSON.stringify(ctx, null, 2));
-    
-    try {
-      // DEFENSIVE: Check event exists
-      if (!event) {
-        console.error('[AI-Warden] ❌ event is null/undefined!');
-        return;
-      }
-      
-      // DEFENSIVE: Check content exists
-      if (!event.content || typeof event.content !== 'string') {
-        console.log('[AI-Warden] ⚠️ No content to scan (content is null, undefined, or not a string)');
-        return;
-      }
-      
-      console.log('[AI-Warden] Content preview:', event.content.substring(0, 50));
-      
-      // DEFENSIVE: Check ctx exists
-      if (!ctx) {
-        console.error('[AI-Warden] ❌ ctx is null/undefined!');
-        return;
-      }
-      
-      // Check if layer is enabled (runtime toggle)
-      console.log('[AI-Warden] Checking if layer is enabled...');
-      const layerEnabled = stateManager.isLayerEnabled('channel');
-      console.log('[AI-Warden] Layer enabled:', layerEnabled);
-      
-      if (!layerEnabled) {
-        console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
-        return; // Layer disabled, skip scan
-      }
-      
-      console.log('[AI-Warden] ✅ All checks passed, starting scan...');
-      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content.substring(0, 50)}..."`);
-      
-      // Add timeout to prevent hanging
-      const scanPromise = validator.scanContent({
-        content: event.content,
-        source: 'channel',
-        metadata: { channelId: ctx.channelId, userId: ctx.userId }
-      });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Scan timeout after 10s')), 10000);
-      });
-      
-      console.log('[AI-Warden] Calling validator.scanContent...');
-      const result = await Promise.race([scanPromise, timeoutPromise]);
-      console.log('[AI-Warden] ✅ Scan completed!');
-      console.log('[AI-Warden] Result:', JSON.stringify(result, null, 2));
-    
-      // AI-Warden returns: safe (boolean), risk (0-100)
-      // safe: false = attack detected by AI-Warden's logic
-      const shouldBlock = !result.safe;
-      
-      console.log(`[AI-Warden] Layer 1 result: safe=${result.safe}, risk=${result.risk}, shouldBlock=${shouldBlock}`);
-      
-      // Record scan
-      console.log('[AI-Warden] Recording scan result...');
-      stateManager.recordScan({
-        layer: 'channel',
-        blocked: shouldBlock,
-        score: result.risk || 0,
-        reason: result.message
-      });
-      console.log('[AI-Warden] ✅ Scan recorded');
-      
-      if (shouldBlock) {
-        const blockMessage = (result.risk || 0) > 50
-          ? '[AI-Warden] Message blocked by security policy'
-          : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
-        
-        console.log('[AI-Warden] ⛔️ BLOCKING MESSAGE:', blockMessage);
-        
-        // THROW error to actually stop execution
-        // (return {block:true} doesn't work for message_received hook)
-        throw new Error(blockMessage);
-      }
-      
-      console.log('[AI-Warden] ✅ Message passed validation');
-    } catch (error) {
-      console.error('[AI-Warden] ❌ Layer 1 handler error:', error);
-      console.error('[AI-Warden] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      
-      // Don't rethrow - let message through on error (fail-open)
-      console.log('[AI-Warden] Allowing message through (fail-open on error)');
-    }
-  });
-  
-  console.log('[AI-Warden] ✅ message_received hook registered');
+  // NOTE: message_received hook is fire-and-forget and CANNOT block messages.
+  // Layer 1 blocking is now handled in before_agent_start hook (see Layer 1 + 2 combined below)
   
   // ========================================================================
-  // LAYER 2: Pre-LLM Gateway (Context Analysis)
+  // LAYER 1 + 2: Channel Input + Pre-LLM Gateway
   // ========================================================================
+  // NOTE: Combined into one before_agent_start hook because:
+  // 1. message_received is fire-and-forget (cannot block)
+  // 2. before_agent_start CAN throw errors to block agent
+  // 3. Both check user input before LLM processes it
+  
+  console.log('[AI-Warden] 📝 Registering before_agent_start hook (Layer 1 + 2)...');
   
   api.on('before_agent_start', async (event: any, ctx: any) => {
-    if (!stateManager.isLayerEnabled('preLlm')) {
-      return; // Layer disabled
+    const enabledChannel = stateManager.isLayerEnabled('channel');
+    const enabledPreLlm = stateManager.isLayerEnabled('preLlm');
+    
+    if (!enabledChannel && !enabledPreLlm) {
+      return; // Both layers disabled
     }
-      if (config.verbose) {
-        console.log('[AI-Warden] Layer 2: Scanning full conversation context');
-      }
-      
-      // Build full context from conversation history
+    
+    try {
       const messages = event.messages || [];
-      const fullContext = messages
-        .map((msg: any) => {
-          const role = msg.role || 'user';
-          const content = typeof msg.content === 'string' 
-            ? msg.content 
-            : JSON.stringify(msg.content);
-          return `[${role}]: ${content}`;
-        })
-        .join('\n\n');
       
-      if (!fullContext || fullContext.length === 0) {
-        return; // No context to scan
-      }
-      
-      // Scan the FULL conversation context
-      const result = await validator.scanContent({
-        content: fullContext,
-        source: 'pre_llm_context',
-        metadata: { 
-          sessionKey: ctx.sessionKey,
-          messageCount: messages.length,
-          contextLength: fullContext.length
+      // LAYER 1: Channel Input Validation (scan latest user message only)
+      if (enabledChannel) {
+        const lastUserMessage = messages
+          .filter((msg: any) => msg.role === 'user')
+          .pop();
+        
+        if (lastUserMessage?.content) {
+          const content = typeof lastUserMessage.content === 'string'
+            ? lastUserMessage.content
+            : JSON.stringify(lastUserMessage.content);
+          
+          if (config.verbose) {
+            console.log(`[AI-Warden] Layer 1: Scanning latest message: "${content.substring(0, 50)}..."`);
+          }
+          
+          const result = await validator.scanContent({
+            content,
+            source: 'channel',
+            metadata: { 
+              channelId: ctx.channelId,
+              sessionKey: ctx.sessionKey
+            }
+          });
+          
+          const shouldBlock = !result.safe;
+          
+          // Record scan
+          stateManager.recordScan({
+            layer: 'channel',
+            blocked: shouldBlock,
+            score: result.risk || 0,
+            reason: result.message
+          });
+          
+          if (shouldBlock) {
+            const blockMessage = (result.risk || 0) > 50
+              ? '⛔️ Message blocked by security policy'
+              : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
+            
+            console.log('[AI-Warden] ⛔️ LAYER 1 BLOCKING MESSAGE:', blockMessage);
+            throw new Error(blockMessage);
+          }
+          
+          if (config.verbose) {
+            console.log('[AI-Warden] ✅ Layer 1 passed');
+          }
         }
-      });
+      }
       
-      // AI-Warden returns: safe (boolean), risk (0-100)
-      const shouldBlock = !result.safe;
-      
-      // Record scan
-      stateManager.recordScan({
-        layer: 'preLlm',
-        blocked: shouldBlock,
-        score: result.risk || 0,
-        reason: result.message
-      });
-      
-      if (shouldBlock) {
-        // CRITICAL: Block entire LLM invocation
-        // HIGH severity: Minimal info (prevent attack learning)
-        if ((result.risk || 0) > 50) {
-          throw new Error('[AI-Warden] Conversation blocked: Security policy violation');
+      // LAYER 2: Pre-LLM Gateway (scan full conversation context)
+      if (enabledPreLlm) {
+        if (config.verbose) {
+          console.log('[AI-Warden] Layer 2: Scanning full conversation context');
         }
-        // MEDIUM: More context for legitimate debugging
-        throw new Error(
-          `⚠️ Conversation blocked by context analysis.\n` +
-          `Reason: ${result.message || 'Suspicious pattern detected'}\n\n` +
-          `Note: Multiple messages may have combined into a potentially malicious pattern.`
-        );
+        
+        // Build full context from conversation history
+        const fullContext = messages
+          .map((msg: any) => {
+            const role = msg.role || 'user';
+            const content = typeof msg.content === 'string' 
+              ? msg.content 
+              : JSON.stringify(msg.content);
+            return `[${role}]: ${content}`;
+          })
+          .join('\n\n');
+        
+        if (fullContext && fullContext.length > 0) {
+          // Scan the FULL conversation context
+          const result = await validator.scanContent({
+            content: fullContext,
+            source: 'pre_llm_context',
+            metadata: { 
+              sessionKey: ctx.sessionKey,
+              messageCount: messages.length,
+              contextLength: fullContext.length
+            }
+          });
+          
+          const shouldBlock = !result.safe;
+          
+          // Record scan
+          stateManager.recordScan({
+            layer: 'preLlm',
+            blocked: shouldBlock,
+            score: result.risk || 0,
+            reason: result.message
+          });
+          
+          if (shouldBlock) {
+            // CRITICAL: Block entire LLM invocation
+            if ((result.risk || 0) > 50) {
+              throw new Error('⛔️ Conversation blocked: Security policy violation');
+            }
+            throw new Error(
+              `⚠️ Conversation blocked by context analysis.\n` +
+              `Reason: ${result.message || 'Suspicious pattern detected'}`
+            );
+          }
+          
+          if ((result.risk || 0) >= (config.policy?.warnThreshold || 100) && config.verbose) {
+            console.warn(
+              `[AI-Warden] Layer 2 Warning: Suspicious conversation pattern ` +
+              `(score: ${result.risk || 0})`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      // If it's a blocking error, rethrow it
+      if (error instanceof Error && (error.message.includes('blocked') || error.message.includes('⛔️'))) {
+        throw error;
       }
       
-      if ((result.risk || 0) >= (config.policy?.warnThreshold || 100) && config.verbose) {
-        console.warn(
-          `[AI-Warden] Layer 2 Warning: Suspicious conversation pattern detected ` +
-          `(score: ${result.risk || 0}). Not blocking yet, but monitoring.`
-        );
+      // Otherwise log and fail-open
+      console.error('[AI-Warden] Layer 1+2 error:', error);
+      
+      if (config.policy?.failOpen === false) {
+        throw new Error('[AI-Warden] Security validation unavailable');
       }
+    }
   });
+  
+  console.log('[AI-Warden] ✅ before_agent_start hook registered (Layer 1 + 2)');
   
   // ========================================================================
   // LAYER 3: Tool Argument Validation
