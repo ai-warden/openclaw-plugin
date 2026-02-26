@@ -121,19 +121,20 @@ export class SecurityValidator {
         metadata
       });
       
-      // Transform to our format (new API returns: safe, risk, layer, message)
+      // AI-Warden API returns: safe, risk, layer, message
+      // (NOT threat, score, reason - those are legacy!)
       const result: ScanResult = {
-        safe: !apiResult.threat,
-        risk: apiResult.score || 0,
-        layer: source,
-        message: apiResult.reason || '',
+        safe: apiResult.safe !== undefined ? apiResult.safe : !apiResult.threat,
+        risk: apiResult.risk !== undefined ? apiResult.risk : (apiResult.score || 0),
+        layer: apiResult.layer || source,
+        message: apiResult.message || apiResult.reason || '',
         // Legacy fields for backward compatibility
-        blocked: apiResult.threat || false,
-        score: apiResult.score || 0,
-        reason: apiResult.reason,
+        blocked: apiResult.threat || !apiResult.safe || false,
+        score: apiResult.risk || apiResult.score || 0,
+        reason: apiResult.message || apiResult.reason,
         threatType: apiResult.type as any,
-        patterns: apiResult.patterns,
-        confidence: apiResult.confidence
+        patterns: apiResult.details?.matched_patterns || apiResult.patterns,
+        confidence: apiResult.details?.confidence || apiResult.confidence
       };
       
       // Cache the result
