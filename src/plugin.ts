@@ -92,19 +92,19 @@ export default function aiWardenPlugin(api: any) {
       metadata: { channelId: ctx.channelId, userId: ctx.userId }
     });
     
-    // Record scan (AI-Warden returns score 0-100 already)
+    // AI-Warden returns: safe (boolean), risk (0-100)
+    // safe: false = attack detected by AI-Warden's logic
+    const shouldBlock = !result.safe;
+    
+    // Record scan
     stateManager.recordScan({
       layer: 'channel',
-      blocked: result.blocked,
-      score: result.score,  // Already 0-100, no scaling needed
-      reason: result.reason
+      blocked: shouldBlock,
+      score: result.risk || 0,  // Use 'risk' field (0-100)
+      reason: result.message || result.reason
     });
     
-    // Check against threshold (0-100 scale, default 80 = high risk)
-    const threshold = config.policy?.blockThreshold || 80;
-    const shouldBlock = result.score >= threshold;
-    
-    if (shouldBlock || result.blocked) {
+    if (shouldBlock) {
       // HIGH severity: Silent block (no details to attacker)
       if (result.score > 500) {
         throw new Error('[AI-Warden] Message blocked by security policy');
@@ -153,19 +153,18 @@ export default function aiWardenPlugin(api: any) {
         }
       });
       
-      // Record scan (AI-Warden returns score 0-100 already)
+      // AI-Warden returns: safe (boolean), risk (0-100)
+      const shouldBlock = !result.safe;
+      
+      // Record scan
       stateManager.recordScan({
         layer: 'preLlm',
-        blocked: result.blocked,
-        score: result.score,  // Already 0-100, no scaling needed
-        reason: result.reason
+        blocked: shouldBlock,
+        score: result.risk || 0,
+        reason: result.message || result.reason
       });
       
-      // Check threshold (0-100 scale, default 80)
-      const threshold = config.policy?.blockThreshold || 80;
-      const shouldBlock = result.score >= threshold;
-      
-      if (shouldBlock || result.blocked) {
+      if (shouldBlock) {
         // CRITICAL: Block entire LLM invocation
         // HIGH severity: Minimal info (prevent attack learning)
         if (result.score > 500) {
