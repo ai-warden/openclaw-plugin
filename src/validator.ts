@@ -121,9 +121,6 @@ export class SecurityValidator {
         metadata
       });
       
-      // DEBUG: Log raw API response
-      console.log('[AI-Warden] Raw API response:', JSON.stringify(apiResult, null, 2));
-      
       // API returns: { success, data: { safe, riskScore, ... } }
       const data = apiResult.data || apiResult;
       
