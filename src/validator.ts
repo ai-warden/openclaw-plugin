@@ -121,8 +121,13 @@ export class SecurityValidator {
         metadata
       });
       
-      // Transform to our format
+      // Transform to our format (new API returns: safe, risk, layer, message)
       const result: ScanResult = {
+        safe: !apiResult.threat,
+        risk: apiResult.score || 0,
+        layer: source,
+        message: apiResult.reason || '',
+        // Legacy fields for backward compatibility
         blocked: apiResult.threat || false,
         score: apiResult.score || 0,
         reason: apiResult.reason,
@@ -172,6 +177,11 @@ export class SecurityValidator {
     const localResult = this.warden.scan(content);
     
     return {
+      safe: !localResult.threat,
+      risk: localResult.score || 0,
+      layer: 'local',
+      message: localResult.reason || 'Local pattern match',
+      // Legacy fields for backward compatibility
       blocked: localResult.threat || false,
       score: localResult.score || 0,
       reason: localResult.reason || 'Local pattern match',

@@ -100,17 +100,17 @@ export default function aiWardenPlugin(api: any) {
     stateManager.recordScan({
       layer: 'channel',
       blocked: shouldBlock,
-      score: result.risk || 0,  // Use 'risk' field (0-100)
-      reason: result.message || result.reason
+      score: result.risk || 0,
+      reason: result.message
     });
     
     if (shouldBlock) {
       // HIGH severity: Silent block (no details to attacker)
-      if (result.score > 500) {
+      if ((result.risk || 0) > 50) {
         throw new Error('[AI-Warden] Message blocked by security policy');
       }
       // MEDIUM: Inform but minimize details
-      throw new Error(`⚠️ Message blocked: ${result.reason || 'Security policy violation'}`);
+      throw new Error(`⚠️ Message blocked: ${result.message || 'Security policy violation'}`);
     }
   });
   
@@ -161,27 +161,27 @@ export default function aiWardenPlugin(api: any) {
         layer: 'preLlm',
         blocked: shouldBlock,
         score: result.risk || 0,
-        reason: result.message || result.reason
+        reason: result.message
       });
       
       if (shouldBlock) {
         // CRITICAL: Block entire LLM invocation
         // HIGH severity: Minimal info (prevent attack learning)
-        if (result.score > 500) {
+        if ((result.risk || 0) > 50) {
           throw new Error('[AI-Warden] Conversation blocked: Security policy violation');
         }
         // MEDIUM: More context for legitimate debugging
         throw new Error(
           `⚠️ Conversation blocked by context analysis.\n` +
-          `Reason: ${result.reason || 'Suspicious pattern detected'}\n\n` +
+          `Reason: ${result.message || 'Suspicious pattern detected'}\n\n` +
           `Note: Multiple messages may have combined into a potentially malicious pattern.`
         );
       }
       
-      if (result.score >= (config.policy?.warnThreshold || 100) && config.verbose) {
+      if ((result.risk || 0) >= (config.policy?.warnThreshold || 100) && config.verbose) {
         console.warn(
           `[AI-Warden] Layer 2 Warning: Suspicious conversation pattern detected ` +
-          `(score: ${result.score}). Not blocking yet, but monitoring.`
+          `(score: ${result.risk || 0}). Not blocking yet, but monitoring.`
         );
       }
   });
@@ -358,11 +358,11 @@ export default function aiWardenPlugin(api: any) {
         metadata: { toolCallId: event.toolCallId }
       });
       
-      if (scanResult.blocked) {
+      if (!scanResult.safe) {
         // Log critical alert - content already in context but we can alert
         console.error(
           `[AI-Warden] ⚠️ CRITICAL: Malicious content detected AFTER tool execution!`,
-          `Tool: ${event.toolName}, Score: ${scanResult.score}, Reason: ${scanResult.reason}`
+          `Tool: ${event.toolName}, Score: ${scanResult.risk || 0}, Reason: ${scanResult.message}`
         );
         
         // Could trigger additional actions here:

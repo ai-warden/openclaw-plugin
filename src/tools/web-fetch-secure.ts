@@ -56,27 +56,27 @@ export function createSecureWebFetchWrapper(
       if (recordScan) {
         recordScan({
           layer: 'content',
-          blocked: scanResult.score >= config.blockThreshold,
-          score: scanResult.score,
-          reason: scanResult.reason
+          blocked: !scanResult.safe,
+          score: scanResult.risk || 0,
+          reason: scanResult.message
         });
       }
       
       // Decision logic
-      if (scanResult.score >= config.blockThreshold) {
+      if (!scanResult.safe) {
         // BLOCK: Content is malicious
         return createBlockedResult({
           url: result.details?.finalUrl || url,
-          reason: scanResult.reason || 'Content contains malicious patterns',
-          score: scanResult.score,
+          reason: scanResult.message || 'Content contains malicious patterns',
+          score: scanResult.risk || 0,
           threatType: scanResult.threatType
         });
       }
       
-      if (scanResult.score >= config.warnThreshold && config.logWarnings) {
+      if ((scanResult.risk || 0) >= config.warnThreshold && config.logWarnings) {
         // WARN: Content is suspicious but not blocked
         console.warn(
-          `[AI-Warden] Suspicious content detected (score: ${scanResult.score}): ${url}`
+          `[AI-Warden] Suspicious content detected (score: ${scanResult.risk || 0}): ${url}`
         );
       }
       
