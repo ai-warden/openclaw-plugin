@@ -110,12 +110,15 @@ export default function aiWardenPlugin(api: any) {
     });
     
     if (shouldBlock) {
-      // HIGH severity: Silent block (no details to attacker)
-      if ((result.risk || 0) > 50) {
-        throw new Error('[AI-Warden] Message blocked by security policy');
-      }
-      // MEDIUM: Inform but minimize details
-      throw new Error(`⚠️ Message blocked: ${result.message || 'Security policy violation'}`);
+      const blockMessage = (result.risk || 0) > 50
+        ? '[AI-Warden] Message blocked by security policy'
+        : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
+      
+      // Try return first (if hook supports it)
+      return {
+        block: true,
+        blockReason: blockMessage
+      };
     }
   });
   
