@@ -90,25 +90,49 @@ export interface PIIStats {
 }
 
 export interface ScanResult {
-  /** True if content should be blocked */
-  blocked: boolean;
+  /** True if content is safe, false if attack detected */
+  safe: boolean;
   
-  /** Threat score (0-1000) */
-  score: number;
+  /** Risk score 0-100 */
+  risk: number;
   
-  /** Human-readable reason for block/warning */
+  /** Which layer detected the threat */
+  layer: string;
+  
+  /** Human-readable description */
+  message: string;
+  
+  /** Original or cleaned text */
+  cleanText?: string;
+  
+  /** Optional detailed breakdown */
+  details?: {
+    pattern_score?: number;
+    ml_score?: number;
+    scout_verdict?: string;
+    confidence?: number;
+    matched_patterns?: string[];
+  };
+  
+  /** Settings used for validation */
+  appliedSettings?: Record<string, unknown>;
+  
+  /** Sandwich scan metadata */
+  sandwich?: {
+    enabled: boolean;
+    originalWords: number;
+    scannedWords: number;
+    headWords: number;
+    tailWords: number;
+  };
+  
+  // Legacy fields for backward compatibility
+  blocked?: boolean;
+  score?: number;
   reason?: string;
-  
-  /** Type of threat detected */
   threatType?: 'prompt_injection' | 'jailbreak' | 'pii' | 'malware' | 'phishing';
-  
-  /** Matched patterns (if available) */
   patterns?: string[];
-  
-  /** Confidence level (0-1) */
   confidence?: number;
-  
-  /** Additional metadata */
   metadata?: Record<string, unknown>;
 }
 
