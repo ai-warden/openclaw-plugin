@@ -77,6 +77,8 @@ export default function aiWardenPlugin(api: any) {
   // ========================================================================
   
   api.on('message_received', async (event: any, ctx: any) => {
+    console.log('[AI-Warden] 🔔 message_received event triggered!', { content: event.content?.substring(0, 30) });
+    
     // Check if layer is enabled (runtime toggle)
     if (!stateManager.isLayerEnabled('channel')) {
       console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
