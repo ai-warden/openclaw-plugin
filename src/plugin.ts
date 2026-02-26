@@ -161,11 +161,9 @@ export default function aiWardenPlugin(api: any) {
         
         console.log('[AI-Warden] ⛔️ BLOCKING MESSAGE:', blockMessage);
         
-        // Try return first (if hook supports it)
-        return {
-          block: true,
-          blockReason: blockMessage
-        };
+        // THROW error to actually stop execution
+        // (return {block:true} doesn't work for message_received hook)
+        throw new Error(blockMessage);
       }
       
       console.log('[AI-Warden] ✅ Message passed validation');
