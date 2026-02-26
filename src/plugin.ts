@@ -93,6 +93,7 @@ export default function aiWardenPlugin(api: any) {
     
     // AI-Warden returns: safe (boolean), risk (0-100)
     // safe: false = attack detected by AI-Warden's logic
+    console.log(`[AI-Warden] Layer 1 result: safe=${result.safe}, risk=${result.risk}, message="${result.message}"`);
     const shouldBlock = !result.safe;
     
     // Record scan
@@ -102,6 +103,8 @@ export default function aiWardenPlugin(api: any) {
       score: result.risk || 0,
       reason: result.message
     });
+    
+    console.log(`[AI-Warden] Layer 1 shouldBlock=${shouldBlock}`);
     
     if (shouldBlock) {
       // HIGH severity: Silent block (no details to attacker)
