@@ -228,7 +228,7 @@ Opens your browser, logs you in, and saves API key to `~/.aiwardenrc` automatica
             "output": true
           },
           "policy": {
-            "blockThreshold": 200,
+            "blockThreshold": 80,
             "warnThreshold": 100,
             "failOpen": true
           },
@@ -264,7 +264,7 @@ plugins:
     
     # Security policy
     policy:
-      blockThreshold: 200    # Score above which content is blocked
+      blockThreshold: 80    # Score above which content is blocked
       warnThreshold: 100     # Score above which warnings are logged
       cacheSeconds: 300      # Cache TTL
     

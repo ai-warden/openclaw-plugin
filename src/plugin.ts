@@ -92,15 +92,22 @@ export default function aiWardenPlugin(api: any) {
       metadata: { channelId: ctx.channelId, userId: ctx.userId }
     });
     
+    // Scale score from 0-1 to 0-100 for easier thresholds
+    const scoreScaled = Math.round(result.score * 100);
+    
     // Record scan
     stateManager.recordScan({
       layer: 'channel',
       blocked: result.blocked,
-      score: result.score,
+      score: scoreScaled,
       reason: result.reason
     });
     
-    if (result.blocked) {
+    // Check against threshold (0-100 scale, default 80 = high risk)
+    const threshold = config.policy?.blockThreshold || 80;
+    const shouldBlock = scoreScaled >= threshold;
+    
+    if (shouldBlock || result.blocked) {
       // HIGH severity: Silent block (no details to attacker)
       if (result.score > 500) {
         throw new Error('[AI-Warden] Message blocked by security policy');
@@ -149,15 +156,22 @@ export default function aiWardenPlugin(api: any) {
         }
       });
       
+      // Scale score from 0-1 to 0-100
+      const scoreScaled = Math.round(result.score * 100);
+      
       // Record scan
       stateManager.recordScan({
         layer: 'preLlm',
         blocked: result.blocked,
-        score: result.score,
+        score: scoreScaled,
         reason: result.reason
       });
       
-      if (result.blocked) {
+      // Check threshold (0-100 scale)
+      const threshold = config.policy?.blockThreshold || 80;
+      const shouldBlock = scoreScaled >= threshold;
+      
+      if (shouldBlock || result.blocked) {
         // CRITICAL: Block entire LLM invocation
         // HIGH severity: Minimal info (prevent attack learning)
         if (result.score > 500) {
