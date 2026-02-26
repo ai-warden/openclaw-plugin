@@ -3,7 +3,7 @@
  */
 
 // @ts-ignore - ai-warden doesn't have types yet
-import { PIIDetector, PII_MODES } from 'ai-warden/src/pii';
+import { PIIDetector, PII_MODES } from 'ai-warden/src/pii/index.js';
 
 export type PIIMode = 'ignore' | 'mask' | 'remove';
 
