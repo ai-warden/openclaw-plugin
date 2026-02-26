@@ -124,20 +124,20 @@ export class SecurityValidator {
       // DEBUG: Log raw API response
       console.log('[AI-Warden] Raw API response:', JSON.stringify(apiResult, null, 2));
       
-      // AI-Warden API returns: safe, risk, layer, message
-      // (NOT threat, score, reason - those are legacy!)
+      // API returns: { success, data: { safe, riskScore, ... } }
+      const data = apiResult.data || apiResult;
+      
       const result: ScanResult = {
-        safe: apiResult.safe !== undefined ? apiResult.safe : !apiResult.threat,
-        risk: apiResult.risk !== undefined ? apiResult.risk : (apiResult.score || 0),
-        layer: apiResult.layer || source,
-        message: apiResult.message || apiResult.reason || '',
+        safe: data.safe,
+        risk: data.riskScore || data.risk || 0,
+        layer: data.layer || source,
+        message: data.decision || data.message || '',
         // Legacy fields for backward compatibility
-        blocked: apiResult.threat || !apiResult.safe || false,
-        score: apiResult.risk || apiResult.score || 0,
-        reason: apiResult.message || apiResult.reason,
-        threatType: apiResult.type as any,
-        patterns: apiResult.details?.matched_patterns || apiResult.patterns,
-        confidence: apiResult.details?.confidence || apiResult.confidence
+        blocked: !data.safe,
+        score: data.riskScore || data.risk || 0,
+        reason: data.decision || data.message || '',
+        patterns: data.threats?.map((t: any) => t.pattern) || [],
+        confidence: data.confidence
       };
       
       // Cache the result
