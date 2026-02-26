@@ -84,24 +84,59 @@ export default function aiWardenPlugin(api: any) {
   console.log('[AI-Warden] 📝 Registering message_received hook...');
   
   api.on('message_received', async (event: any, ctx: any) => {
+    console.log('[AI-Warden] 🔔 message_received event triggered!');
+    console.log('[AI-Warden] Event object:', JSON.stringify(event, null, 2));
+    console.log('[AI-Warden] Context object:', JSON.stringify(ctx, null, 2));
+    
     try {
-      console.log('[AI-Warden] 🔔 message_received event triggered!', { content: event.content?.substring(0, 30) });
+      // DEFENSIVE: Check event exists
+      if (!event) {
+        console.error('[AI-Warden] ❌ event is null/undefined!');
+        return;
+      }
+      
+      // DEFENSIVE: Check content exists
+      if (!event.content || typeof event.content !== 'string') {
+        console.log('[AI-Warden] ⚠️ No content to scan (content is null, undefined, or not a string)');
+        return;
+      }
+      
+      console.log('[AI-Warden] Content preview:', event.content.substring(0, 50));
+      
+      // DEFENSIVE: Check ctx exists
+      if (!ctx) {
+        console.error('[AI-Warden] ❌ ctx is null/undefined!');
+        return;
+      }
       
       // Check if layer is enabled (runtime toggle)
-      if (!stateManager.isLayerEnabled('channel')) {
+      console.log('[AI-Warden] Checking if layer is enabled...');
+      const layerEnabled = stateManager.isLayerEnabled('channel');
+      console.log('[AI-Warden] Layer enabled:', layerEnabled);
+      
+      if (!layerEnabled) {
         console.log('[AI-Warden] Layer 1 (channel) is DISABLED, skipping scan');
         return; // Layer disabled, skip scan
       }
       
-      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content?.substring(0, 50)}..."`);
+      console.log('[AI-Warden] ✅ All checks passed, starting scan...');
+      console.log(`[AI-Warden] Layer 1: Scanning message from ${ctx.channelId}: "${event.content.substring(0, 50)}..."`);
       
-      const result = await validator.scanContent({
+      // Add timeout to prevent hanging
+      const scanPromise = validator.scanContent({
         content: event.content,
         source: 'channel',
         metadata: { channelId: ctx.channelId, userId: ctx.userId }
       });
       
-      console.log('[AI-Warden] Scan completed, result:', { safe: result.safe, risk: result.risk });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Scan timeout after 10s')), 10000);
+      });
+      
+      console.log('[AI-Warden] Calling validator.scanContent...');
+      const result = await Promise.race([scanPromise, timeoutPromise]);
+      console.log('[AI-Warden] ✅ Scan completed!');
+      console.log('[AI-Warden] Result:', JSON.stringify(result, null, 2));
     
       // AI-Warden returns: safe (boolean), risk (0-100)
       // safe: false = attack detected by AI-Warden's logic
@@ -110,12 +145,14 @@ export default function aiWardenPlugin(api: any) {
       console.log(`[AI-Warden] Layer 1 result: safe=${result.safe}, risk=${result.risk}, shouldBlock=${shouldBlock}`);
       
       // Record scan
+      console.log('[AI-Warden] Recording scan result...');
       stateManager.recordScan({
         layer: 'channel',
         blocked: shouldBlock,
         score: result.risk || 0,
         reason: result.message
       });
+      console.log('[AI-Warden] ✅ Scan recorded');
       
       if (shouldBlock) {
         const blockMessage = (result.risk || 0) > 50
@@ -134,7 +171,10 @@ export default function aiWardenPlugin(api: any) {
       console.log('[AI-Warden] ✅ Message passed validation');
     } catch (error) {
       console.error('[AI-Warden] ❌ Layer 1 handler error:', error);
-      throw error;
+      console.error('[AI-Warden] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Don't rethrow - let message through on error (fail-open)
+      console.log('[AI-Warden] Allowing message through (fail-open on error)');
     }
   });
   
