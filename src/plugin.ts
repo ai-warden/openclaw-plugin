@@ -16,6 +16,7 @@ import { StateManager } from './state-manager.js';
 import { registerWardenCommands } from './commands.js';
 import { PIIHandler } from './pii-handler.js';
 import { createMessageBlocker } from './message-blocker.js';
+import { createSecurityGuard } from './security-guard.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
@@ -79,43 +80,43 @@ export default function aiWardenPlugin(api: any) {
   }
   
   // ========================================================================
-  // LAYER 0.5: Command Handler (Message Blocker)
+  // LAYER 0.5: Security Guard (Monkey-Patch getReplyFromConfig)
   // ========================================================================
-  // This runs BEFORE the LLM and can actually block messages!
-  // Hooks (message_received, before_agent_start) are observers only.
+  // WORKING SOLUTION: Wrap getReplyFromConfig with security checks
+  // This runs BEFORE LLM and can actually block!
   
-  console.log('[AI-Warden] 📝 Registering command handler (message blocker)...');
+  console.log('[AI-Warden] 🛡️ Creating security guard...');
   
-  const messageBlocker = createMessageBlocker(validator, stateManager, config);
+  const securityGuard = createSecurityGuard({
+    validator,
+    stateManager,
+    config
+  });
   
-  // Try to register IMMEDIATELY (not via hook)
+  // Monkey-patch getReplyFromConfig to add security checks
   (async () => {
     try {
-      console.log('[AI-Warden] Attempting to import commands-core...');
+      await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Wait a bit for Moltbot to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const replyPath = api.resolvePath('dist/auto-reply/reply/get-reply.js');
+      console.log('[AI-Warden] Importing get-reply module:', replyPath);
       
-      // Dynamically import commands core (actual path in Moltbot)
-      const commandsPath = api.resolvePath('dist/auto-reply/reply/commands-core.js');
-      console.log('[AI-Warden] Resolved path:', commandsPath);
+      const replyModule = await import(replyPath);
+      console.log('[AI-Warden] Module exports:', Object.keys(replyModule));
       
-      const commandsModule = await import(commandsPath);
-      console.log('[AI-Warden] Module imported, HANDLERS exists:', !!commandsModule.HANDLERS);
-      
-      if (commandsModule.HANDLERS) {
-        console.log('[AI-Warden] HANDLERS array length before:', commandsModule.HANDLERS.length);
-        // Insert at START of array = highest priority
-        commandsModule.HANDLERS.unshift(messageBlocker);
-        console.log('[AI-Warden] HANDLERS array length after:', commandsModule.HANDLERS.length);
-        console.log('[AI-Warden] ✅ Command handler registered (blocking enabled!)');
+      if (replyModule.getReplyFromConfig) {
+        const original = replyModule.getReplyFromConfig;
+        
+        // Wrap with security guard
+        replyModule.getReplyFromConfig = securityGuard.wrapResolver(original);
+        
+        console.log('[AI-Warden] ✅ getReplyFromConfig WRAPPED with security guard!');
+        console.log('[AI-Warden] 🛡️ Messages will be blocked BEFORE LLM invocation!');
       } else {
-        console.warn('[AI-Warden] ⚠️ Could not find HANDLERS array - command blocking disabled');
-        console.warn('[AI-Warden] Available exports:', Object.keys(commandsModule));
+        console.warn('[AI-Warden] ⚠️ getReplyFromConfig not found in module');
       }
     } catch (error: any) {
-      console.error('[AI-Warden] ❌ Failed to register command handler:', error.message);
-      console.error('[AI-Warden] Stack:', error.stack);
+      console.error('[AI-Warden] ❌ Failed to wrap getReplyFromConfig:', error.message);
     }
   })();
   
