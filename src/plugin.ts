@@ -17,6 +17,7 @@ import { registerWardenCommands } from './commands.js';
 import { PIIHandler } from './pii-handler.js';
 import { createMessageBlocker } from './message-blocker.js';
 import { createSecurityGuard } from './security-guard.js';
+import { createTelegramBlocker } from './telegram-blocker.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
@@ -80,45 +81,54 @@ export default function aiWardenPlugin(api: any) {
   }
   
   // ========================================================================
-  // LAYER 0.5: Security Guard (Monkey-Patch getReplyFromConfig)
+  // LAYER 0.5: Telegram Message Blocker (INPUT BLOCKING)
   // ========================================================================
-  // WORKING SOLUTION: Wrap getReplyFromConfig with security checks
-  // This runs BEFORE LLM and can actually block!
+  // DESPERATE SUBAGENT SOLUTION: Wrap dispatchTelegramMessage!
+  // This ACTUALLY blocks messages before LLM!!!
   
-  console.log('[AI-Warden] 🛡️ Creating security guard...');
+  console.log('[AI-Warden] 🚫 Creating Telegram blocker...');
   
-  const securityGuard = createSecurityGuard({
+  const telegramBlocker = createTelegramBlocker({
     validator,
     stateManager,
     config
   });
   
-  // Monkey-patch getReplyFromConfig to add security checks
-  (async () => {
+  // Wrap dispatchTelegramMessage at gateway_start
+  api.on('gateway_start', async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log('[AI-Warden] gateway_start triggered, wrapping Telegram dispatch...');
       
-      const replyPath = api.resolvePath('dist/auto-reply/reply/get-reply.js');
-      console.log('[AI-Warden] Importing get-reply module:', replyPath);
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      const replyModule = await import(replyPath);
-      console.log('[AI-Warden] Module exports:', Object.keys(replyModule));
+      // Find Telegram channel plugin
+      const channels = api.runtime?.channels || {};
+      const telegramChannel = Object.values(channels).find((ch: any) => 
+        ch.name === 'telegram' || ch.id === 'telegram'
+      );
       
-      if (replyModule.getReplyFromConfig) {
-        const original = replyModule.getReplyFromConfig;
-        
-        // Wrap with security guard
-        replyModule.getReplyFromConfig = securityGuard.wrapResolver(original);
-        
-        console.log('[AI-Warden] ✅ getReplyFromConfig WRAPPED with security guard!');
-        console.log('[AI-Warden] 🛡️ Messages will be blocked BEFORE LLM invocation!');
-      } else {
-        console.warn('[AI-Warden] ⚠️ getReplyFromConfig not found in module');
+      if (!telegramChannel) {
+        console.warn('[AI-Warden] ⚠️ Telegram channel not found');
+        return;
       }
+      
+      console.log('[AI-Warden] Found Telegram channel:', telegramChannel.name);
+      
+      // Try to find dispatch function in channel
+      // This is channel-specific patching
+      if (typeof telegramChannel.dispatchMessage === 'function') {
+        const original = telegramChannel.dispatchMessage;
+        telegramChannel.dispatchMessage = telegramBlocker.wrapDispatch(original);
+        console.log('[AI-Warden] ✅ Telegram dispatch WRAPPED - INPUT BLOCKING ENABLED!');
+      } else {
+        console.warn('[AI-Warden] ⚠️ Could not find dispatchMessage on Telegram channel');
+        console.warn('[AI-Warden] Available methods:', Object.keys(telegramChannel).filter(k => typeof telegramChannel[k] === 'function'));
+      }
+      
     } catch (error: any) {
-      console.error('[AI-Warden] ❌ Failed to wrap getReplyFromConfig:', error.message);
+      console.error('[AI-Warden] ❌ Failed to wrap Telegram dispatch:', error.message);
     }
-  })();
+  });
   
   // ========================================================================
   // LAYER 1: Channel Input Validation (Stats Only)
@@ -286,6 +296,26 @@ export default function aiWardenPlugin(api: any) {
     if (!stateManager.isLayerEnabled('toolArgs')) {
       return;
     }
+    
+      // ENHANCED: Check if session is flagged as suspicious (INPUT detected threat)
+      const sessionKey = ctx.sessionKey;
+      if (sessionKey && stateManager.isSessionSuspicious(sessionKey)) {
+        const details = stateManager.getSuspiciousSessionDetails(sessionKey);
+        console.log(`[AI-Warden] 🚨 OUTPUT BLOCKING: Session flagged (${details.reason}), tool call blocked!`);
+        
+        stateManager.recordScan({
+          layer: 'toolArgs',
+          blocked: true,
+          score: details.risk,
+          reason: `Output blocked - session flagged: ${details.reason}`
+        });
+        
+        return {
+          block: true,
+          blockReason: `⛔️ Tool execution blocked due to suspicious session activity`
+        };
+      }
+      
       // Skip content tools (handled by Layer 0 wrappers)
       const contentTools = ['web_fetch', 'browser', 'read'];
       if (contentTools.includes(event.toolName)) {

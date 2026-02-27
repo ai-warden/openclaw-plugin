@@ -43,11 +43,17 @@ interface SecurityStats {
 
 interface RuntimeState {
   piiMode?: 'ignore' | 'mask' | 'remove';
+  suspiciousSessions?: Map<string, {
+    reason: string;
+    risk: number;
+    timestamp: number;
+  }>;
 }
 
 export class StateManager {
   private statePath: string;
   private layerState: LayerState;
+  private suspiciousSessions: Map<string, any>;
   private stats: SecurityStats;
   private runtimeState: RuntimeState;
   private saveDebounce: NodeJS.Timeout | null = null;
@@ -78,6 +84,7 @@ export class StateManager {
     
     // Initialize runtime state
     this.runtimeState = {};
+    this.suspiciousSessions = new Map();
     
     // Load persisted state
     this.load();
@@ -360,5 +367,31 @@ export class StateManager {
       itemsProcessed: 0,
       byType: {}
     };
+  }
+  
+  /**
+   * Flag session as suspicious (for output blocking in Layer 3)
+   */
+  flagSuspiciousSession(sessionKey: string, details: { reason: string; risk: number; timestamp: number }) {
+    this.suspiciousSessions.set(sessionKey, details);
+    
+    // Auto-expire after 5 minutes
+    setTimeout(() => {
+      this.suspiciousSessions.delete(sessionKey);
+    }, 5 * 60 * 1000);
+  }
+  
+  /**
+   * Check if session is flagged as suspicious
+   */
+  isSessionSuspicious(sessionKey: string): boolean {
+    return this.suspiciousSessions.has(sessionKey);
+  }
+  
+  /**
+   * Get suspicious session details
+   */
+  getSuspiciousSessionDetails(sessionKey: string) {
+    return this.suspiciousSessions.get(sessionKey);
   }
 }
