@@ -102,8 +102,8 @@ export default function aiWardenPlugin(api: any) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Find Telegram channel plugin
-      const channels = api.runtime?.channels || {};
-      const telegramChannel = Object.values(channels).find((ch: any) => 
+      const channels: any = api.runtime?.channels || {};
+      const telegramChannel: any = Object.values(channels).find((ch: any) => 
         ch.name === 'telegram' || ch.id === 'telegram'
       );
       
