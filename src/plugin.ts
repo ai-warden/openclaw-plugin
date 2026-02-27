@@ -91,8 +91,8 @@ export default function aiWardenPlugin(api: any) {
   // Register via gateway_start hook to inject into HANDLERS array
   api.on('gateway_start', async () => {
     try {
-      // Dynamically import commands core
-      const commandsModule = await import(api.resolvePath('dist/commands/commands-core.js'));
+      // Dynamically import commands core (actual path in Moltbot)
+      const commandsModule = await import(api.resolvePath('dist/auto-reply/reply/commands-core.js'));
       
       if (commandsModule.HANDLERS) {
         // Insert at START of array = highest priority
