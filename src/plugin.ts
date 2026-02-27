@@ -88,9 +88,12 @@ export default function aiWardenPlugin(api: any) {
   
   const messageBlocker = createMessageBlocker(validator, stateManager, config);
   
-  // Register via gateway_start hook to inject into HANDLERS array
-  api.on('gateway_start', async () => {
+  // Try to register IMMEDIATELY (not via hook)
+  (async () => {
     try {
+      // Wait a bit for Moltbot to initialize
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Dynamically import commands core (actual path in Moltbot)
       const commandsModule = await import(api.resolvePath('dist/auto-reply/reply/commands-core.js'));
       
@@ -104,7 +107,7 @@ export default function aiWardenPlugin(api: any) {
     } catch (error: any) {
       console.error('[AI-Warden] ❌ Failed to register command handler:', error.message);
     }
-  });
+  })();
   
   // ========================================================================
   // LAYER 1: Channel Input Validation (Stats Only)
