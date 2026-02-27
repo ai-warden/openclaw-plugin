@@ -145,6 +145,9 @@ export interface ValidationResult {
   
   /** Confidence level (0-1) */
   confidence?: number;
+  
+  /** Risk score (0-10) for warnings */
+  risk?: number;
 }
 
 export interface FilterResult {

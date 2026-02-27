@@ -18,6 +18,7 @@ import { PIIHandler } from './pii-handler.js';
 import { createMessageBlocker } from './message-blocker.js';
 import { createSecurityGuard } from './security-guard.js';
 import { createTelegramBlocker } from './telegram-blocker.js';
+import { WarningDecisionEngine } from './warning-engine.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
@@ -48,6 +49,9 @@ export default function aiWardenPlugin(api: any) {
   
   // Initialize PII handler with default mode
   const piiHandler = new PIIHandler(config.output?.piiMode || 'mask');
+  
+  // Initialize warning engine
+  const warningEngine = new WarningDecisionEngine();
   
   // API down notification handler
   const notifyApiDown = (message: string) => {
@@ -194,6 +198,48 @@ export default function aiWardenPlugin(api: any) {
             reason: result.message
           });
           
+          // Track last user message for warning context
+          warningEngine.updateLastUserMessage(ctx.sessionKey, content);
+          
+          // Check if warning needed (even if not blocking)
+          if (!result.safe || (result.risk && result.risk > 0.5)) {
+            const warning = warningEngine.shouldWarn({
+              type: 'INPUT_THREAT',
+              layer: 1,
+              threat: {
+                confidence: result.risk || 0.5,
+                type: result.message || 'suspicious_input',
+                pattern: content.substring(0, 100),
+                timestamp: Date.now()
+              },
+              sessionId: ctx.sessionKey
+            });
+            
+            if (warning) {
+              // Send warning to user (async, don't block)
+              setImmediate(async () => {
+                try {
+                  const warningText = warningEngine.formatWarning(warning);
+                  console.log('[AI-Warden] 📢 Sending warning:', warningText.substring(0, 100));
+                  
+                  // Try to send via reply (if api supports it)
+                  if (api.reply) {
+                    await api.reply(ctx, warningText);
+                  } else if (api.sendMessage) {
+                    await api.sendMessage({
+                      target: ctx.channelId || ctx.from,
+                      message: warningText
+                    });
+                  }
+                  
+                  warningEngine.markWarningSent(ctx.sessionKey);
+                } catch (err) {
+                  console.error('[AI-Warden] Failed to send warning:', err);
+                }
+              });
+            }
+          }
+          
           if (shouldBlock) {
             const blockMessage = (result.risk || 0) > 50
               ? '⛔️ Message blocked by security policy'
@@ -339,6 +385,42 @@ export default function aiWardenPlugin(api: any) {
       });
       
       if (validation.block) {
+        // Generate warning for blocked action
+        const warning = warningEngine.shouldWarn({
+          type: 'ACTION_BLOCKED',
+          layer: 3,
+          action: {
+            toolName: event.toolName,
+            toolArgs: event.params,
+            blockReason: validation.reason,
+            riskScore: validation.risk || 8,
+            timestamp: Date.now()
+          },
+          sessionId: ctx.sessionKey
+        });
+        
+        if (warning) {
+          setImmediate(async () => {
+            try {
+              const warningText = warningEngine.formatWarning(warning);
+              console.log('[AI-Warden] 📢 Sending blocked action warning');
+              
+              if (api.reply) {
+                await api.reply(ctx, warningText);
+              } else if (api.sendMessage) {
+                await api.sendMessage({
+                  target: ctx.channelId || ctx.from,
+                  message: warningText
+                });
+              }
+              
+              warningEngine.markWarningSent(ctx.sessionKey);
+            } catch (err) {
+              console.error('[AI-Warden] Failed to send warning:', err);
+            }
+          });
+        }
+        
         return {
           block: true,
           blockReason: `⚠️ Tool blocked by AI-Warden: ${validation.reason}`
