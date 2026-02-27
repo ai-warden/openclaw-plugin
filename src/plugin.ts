@@ -91,21 +91,31 @@ export default function aiWardenPlugin(api: any) {
   // Try to register IMMEDIATELY (not via hook)
   (async () => {
     try {
+      console.log('[AI-Warden] Attempting to import commands-core...');
+      
       // Wait a bit for Moltbot to initialize
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Dynamically import commands core (actual path in Moltbot)
-      const commandsModule = await import(api.resolvePath('dist/auto-reply/reply/commands-core.js'));
+      const commandsPath = api.resolvePath('dist/auto-reply/reply/commands-core.js');
+      console.log('[AI-Warden] Resolved path:', commandsPath);
+      
+      const commandsModule = await import(commandsPath);
+      console.log('[AI-Warden] Module imported, HANDLERS exists:', !!commandsModule.HANDLERS);
       
       if (commandsModule.HANDLERS) {
+        console.log('[AI-Warden] HANDLERS array length before:', commandsModule.HANDLERS.length);
         // Insert at START of array = highest priority
         commandsModule.HANDLERS.unshift(messageBlocker);
+        console.log('[AI-Warden] HANDLERS array length after:', commandsModule.HANDLERS.length);
         console.log('[AI-Warden] ✅ Command handler registered (blocking enabled!)');
       } else {
         console.warn('[AI-Warden] ⚠️ Could not find HANDLERS array - command blocking disabled');
+        console.warn('[AI-Warden] Available exports:', Object.keys(commandsModule));
       }
     } catch (error: any) {
       console.error('[AI-Warden] ❌ Failed to register command handler:', error.message);
+      console.error('[AI-Warden] Stack:', error.stack);
     }
   })();
   
