@@ -15,6 +15,7 @@ import { createSecureWebFetchWrapper } from './tools/web-fetch-secure.js';
 import { StateManager } from './state-manager.js';
 import { registerWardenCommands } from './commands.js';
 import { PIIHandler } from './pii-handler.js';
+import { createMessageBlocker } from './message-blocker.js';
 import type { SecurityConfig } from './types.js';
 
 export default function aiWardenPlugin(api: any) {
@@ -78,8 +79,38 @@ export default function aiWardenPlugin(api: any) {
   }
   
   // ========================================================================
-  // LAYER 1: Channel Input Validation
+  // LAYER 0.5: Command Handler (Message Blocker)
   // ========================================================================
+  // This runs BEFORE the LLM and can actually block messages!
+  // Hooks (message_received, before_agent_start) are observers only.
+  
+  console.log('[AI-Warden] 📝 Registering command handler (message blocker)...');
+  
+  const messageBlocker = createMessageBlocker(validator, stateManager, config);
+  
+  // Register via gateway_start hook to inject into HANDLERS array
+  api.on('gateway_start', async () => {
+    try {
+      // Dynamically import commands core
+      const commandsModule = await import(api.resolvePath('dist/commands/commands-core.js'));
+      
+      if (commandsModule.HANDLERS) {
+        // Insert at START of array = highest priority
+        commandsModule.HANDLERS.unshift(messageBlocker);
+        console.log('[AI-Warden] ✅ Command handler registered (blocking enabled!)');
+      } else {
+        console.warn('[AI-Warden] ⚠️ Could not find HANDLERS array - command blocking disabled');
+      }
+    } catch (error: any) {
+      console.error('[AI-Warden] ❌ Failed to register command handler:', error.message);
+    }
+  });
+  
+  // ========================================================================
+  // LAYER 1: Channel Input Validation (Stats Only)
+  // ========================================================================
+  // NOTE: This hook is for STATS ONLY - it cannot block messages.
+  // Actual blocking is done by the command handler above.
   
   // NOTE: message_received hook is fire-and-forget and CANNOT block messages.
   // Layer 1 blocking is now handled in before_agent_start hook (see Layer 1 + 2 combined below)
