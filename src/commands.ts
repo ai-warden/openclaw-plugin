@@ -6,12 +6,12 @@ import type { StateManager } from './state-manager.js';
 import type { SecurityConfig } from './types.js';
 
 const LAYER_NAMES: Record<string, string> = {
-  content: 'Layer 0: Content Validation',
-  channel: 'Layer 1: Channel Input',
-  preLlm: 'Layer 2: Pre-LLM Context',
-  toolArgs: 'Layer 3: Tool Arguments',
-  subagents: 'Layer 4: Subagent Tasks',
-  output: 'Layer 5: Output Filtering'
+  content: 'Layer 0: Content Validation (🛡️ BLOCKS)',
+  channel: 'Layer 1: Channel Input (⚠️ Monitor only)',
+  preLlm: 'Layer 2: Pre-LLM Context (⚠️ Monitor only)',
+  toolArgs: 'Layer 3: Tool Arguments (🛡️ BLOCKS)',
+  subagents: 'Layer 4: Subagent Tasks (🛡️ BLOCKS)',
+  output: 'Layer 5: Output Filtering (🛡️ BLOCKS)'
 };
 
 export function registerWardenCommands(api: any, config: SecurityConfig, stateManager: StateManager) {
@@ -57,20 +57,22 @@ export function registerWardenCommands(api: any, config: SecurityConfig, stateMa
           const response = [
             '🛡️ **AI-Warden Control Panel**',
             '',
+            '**Status:** 4/6 layers actively BLOCKING attacks',
+            '✅ Layer 0,3,4,5: Block malicious content/tools/output',
+            '⚠️ Layer 1,2: Monitor only (can detect, can\'t block input)',
+            '',
             '**Commands:**',
-            '• `/warden status` - View security status',
-            '• `/warden stats` - Show statistics',
-            '• `/warden layer <name> on/off` - Toggle security layer',
-            '• `/warden health` - Check API connection status',
+            '• `/warden status` - View all layers',
+            '• `/warden stats` - Attack statistics',
+            '• `/warden layer <name> on/off` - Toggle layers',
+            '• `/warden health` - API connection check',
             '• `/warden reset` - Reset statistics',
-            '• `/warden help` - Show detailed help',
             '',
             '**Quick Actions:**',
-            '• `/warden layer channel off` - Disable channel scanning (save API calls)',
-            '• `/warden layer channel on` - Enable channel scanning',
+            '• `/warden layer channel off` - Save API calls (monitoring off)',
             '• `/warden pii mask` - Mask PII with labels',
             '',
-            'Powered by AI-Warden | https://ai-warden.io'
+            'Real protection against indirect prompt injection! 🎯'
           ].join('\n');
           console.log('[AI-Warden] Returning help text, length:', response.length);
           return { text: response };
@@ -169,16 +171,18 @@ function handleLayerToggle(args: string[], stateManager: StateManager): { text: 
       text: [
         '❌ **Usage:** `/warden layer <name> <on|off>`',
         '',
-        '**Available layers:**',
-        '• `content` - Content validation (web_fetch, browser, read)',
-        '• `channel` - Channel input validation',
-        '• `preLlm` - Pre-LLM context analysis',
-        '• `toolArgs` - Tool argument sanitization',
-        '• `subagents` - Subagent task validation',
-        '• `output` - Output filtering',
+        '**Layers that BLOCK attacks:**',
+        '• `content` 🛡️ - Blocks evil web/file content (WORKS)',
+        '• `toolArgs` 🛡️ - Blocks dangerous tool calls (WORKS)',
+        '• `subagents` 🛡️ - Blocks malicious spawning (WORKS)',
+        '• `output` 🛡️ - Masks PII in output (WORKS)',
+        '',
+        '**Layers that MONITOR only:**',
+        '• `channel` ⚠️ - Detects threats, logs stats (can\'t block input)',
+        '• `preLlm` ⚠️ - Context analysis (monitoring only)',
         '',
         '**Example:**',
-        '`/warden layer channel off` - Disable channel scanning'
+        '`/warden layer channel off` - Disable monitoring to save API calls'
       ].join('\n')
     };
   }
