@@ -228,36 +228,17 @@ export default function aiWardenPlugin(api: any) {
             });
             
             if (warning) {
-              // Send warning to user (async, don't block)
-              setImmediate(async () => {
-                try {
-                  const warningText = warningEngine.formatWarning(warning);
-                  console.log('[AI-Warden] 📢 Sending warning:', warningText.substring(0, 100));
-                  
-                  // Use sessions_send to deliver warning to same session
-                  // This is the CORRECT way - warnings go back through session context
-                  try {
-                    if (api.runtime?.sessions?.send) {
-                      await api.runtime.sessions.send({
-                        sessionKey: ctx.sessionKey,
-                        message: warningText,
-                        internal: true  // Don't trigger new agent turn
-                      });
-                      console.log('[AI-Warden] ✅ Warning delivered via session');
-                    } else {
-                      console.warn('[AI-Warden] sessions.send not available, trying direct reply');
-                      // Fallback: Just log warning (will appear in agent response)
-                      console.log('[AI-Warden] ⚠️ WARNING TO USER:', warningText);
-                    }
-                  } catch (sendErr) {
-                    console.error('[AI-Warden] Failed to send via session:', sendErr);
-                  }
-                  
-                  warningEngine.markWarningSent(ctx.sessionKey);
-                } catch (err) {
-                  console.error('[AI-Warden] Failed to send warning:', err);
-                }
+              // Inject warning as system message that LLM will see and relay
+              const warningText = warningEngine.formatWarning(warning);
+              console.log('[AI-Warden] 📢 Injecting warning into conversation:', warningText.substring(0, 100));
+              
+              event.messages.push({
+                role: 'system',
+                content: `SECURITY ALERT - RELAY TO USER IMMEDIATELY:\n\n${warningText}\n\nThen continue normally.`
               });
+              
+              warningEngine.markWarningSent(ctx.sessionKey);
+              console.log('[AI-Warden] ✅ Warning injected as system message');
             }
           }
           
@@ -420,37 +401,19 @@ export default function aiWardenPlugin(api: any) {
           sessionId: ctx.sessionKey
         });
         
+        // Generate full warning for blockReason (LLM will see and relay)
+        let blockReasonText = `⚠️ Tool blocked by AI-Warden: ${validation.reason}`;
+        
         if (warning) {
-          setImmediate(async () => {
-            try {
-              const warningText = warningEngine.formatWarning(warning);
-              console.log('[AI-Warden] 📢 Sending blocked action warning');
-              
-              try {
-                if (api.runtime?.sessions?.send) {
-                  await api.runtime.sessions.send({
-                    sessionKey: ctx.sessionKey,
-                    message: warningText,
-                    internal: true
-                  });
-                  console.log('[AI-Warden] ✅ Blocked action warning delivered via session');
-                } else {
-                  console.log('[AI-Warden] ⚠️ BLOCKED ACTION WARNING:', warningText);
-                }
-              } catch (sendErr) {
-                console.error('[AI-Warden] Failed to send blocked action warning:', sendErr);
-              }
-              
-              warningEngine.markWarningSent(ctx.sessionKey);
-            } catch (err) {
-              console.error('[AI-Warden] Failed to send warning:', err);
-            }
-          });
+          const warningText = warningEngine.formatWarning(warning);
+          console.log('[AI-Warden] 📢 Including warning in block reason');
+          blockReasonText = `${warningText}\n\n---\nTechnical: ${validation.reason}`;
+          warningEngine.markWarningSent(ctx.sessionKey);
         }
         
         return {
           block: true,
-          blockReason: `⚠️ Tool blocked by AI-Warden: ${validation.reason}`
+          blockReason: blockReasonText
         };
       }
   });
