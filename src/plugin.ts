@@ -235,11 +235,19 @@ export default function aiWardenPlugin(api: any) {
                   console.log('[AI-Warden] 📢 Sending warning:', warningText.substring(0, 100));
                   
                   // Use correct plugin runtime API with safe defaults
-                  const provider = (ctx.Provider || ctx.Surface || 'telegram').toString().toLowerCase().trim();
-                  const recipient = ctx.From || ctx.from || ctx.chatId;
+                  // ctx in before_agent_start has messageProvider, not direct From/chatId
+                  const msgProvider = ctx.messageProvider;
+                  if (!msgProvider) {
+                    console.error('[AI-Warden] Cannot send warning: messageProvider not found in ctx');
+                    return;
+                  }
+                  
+                  const provider = (msgProvider.provider || 'telegram').toString().toLowerCase().trim();
+                  const recipient = msgProvider.from || msgProvider.chatId || msgProvider.id;
                   
                   if (!recipient) {
-                    console.error('[AI-Warden] Cannot send warning: no recipient found in ctx');
+                    console.error('[AI-Warden] Cannot send warning: no recipient in messageProvider');
+                    console.log('[AI-Warden] messageProvider keys:', Object.keys(msgProvider));
                     return;
                   }
                   
@@ -436,11 +444,18 @@ export default function aiWardenPlugin(api: any) {
               const warningText = warningEngine.formatWarning(warning);
               console.log('[AI-Warden] 📢 Sending blocked action warning');
               
-              const provider = (ctx.Provider || ctx.Surface || 'telegram').toString().toLowerCase().trim();
-              const recipient = ctx.From || ctx.from || ctx.chatId;
+              const msgProvider = ctx.messageProvider;
+              if (!msgProvider) {
+                console.error('[AI-Warden] Cannot send blocked action warning: no messageProvider');
+                return;
+              }
+              
+              const provider = (msgProvider.provider || 'telegram').toString().toLowerCase().trim();
+              const recipient = msgProvider.from || msgProvider.chatId || msgProvider.id;
               
               if (!recipient) {
                 console.error('[AI-Warden] Cannot send blocked action warning: no recipient');
+                console.log('[AI-Warden] messageProvider keys:', Object.keys(msgProvider));
                 return;
               }
               
