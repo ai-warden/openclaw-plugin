@@ -232,13 +232,17 @@ export default function aiWardenPlugin(api: any) {
               const warningText = warningEngine.formatWarning(warning);
               console.log('[AI-Warden] 📢 Injecting warning into conversation:', warningText.substring(0, 100));
               
-              event.messages.push({
-                role: 'system',
-                content: `SECURITY ALERT - RELAY TO USER IMMEDIATELY:\n\n${warningText}\n\nThen continue normally.`
-              });
+              // Create new array (event.messages might be frozen/immutable)
+              event.messages = [
+                ...event.messages,
+                {
+                  role: 'system',
+                  content: `⚠️ SECURITY WARNING: Previous user message was flagged as a potential security threat.\n\n${warningText}\n\nPlease inform the user about this security concern, then continue normally.`
+                }
+              ];
               
               warningEngine.markWarningSent(ctx.sessionKey);
-              console.log('[AI-Warden] ✅ Warning injected as system message');
+              console.log('[AI-Warden] ✅ Warning injected as system message (array recreated)');
             }
           }
           
