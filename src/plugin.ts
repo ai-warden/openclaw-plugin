@@ -237,7 +237,17 @@ export default function aiWardenPlugin(api: any) {
                 ...event.messages,
                 {
                   role: 'system',
-                  content: `⚠️ SECURITY WARNING: Previous user message was flagged as a potential security threat.\n\n${warningText}\n\nPlease inform the user about this security concern, then continue normally.`
+                  content: `🚨 CRITICAL SECURITY ALERT 🚨
+
+The previous user message triggered AI-Warden security detection.
+
+YOU MUST inform the user immediately by including this in your response:
+
+---
+${warningText}
+---
+
+This is a MANDATORY security notification. Include it verbatim in your next message, then respond to the user's request normally.`
                 }
               ];
               
