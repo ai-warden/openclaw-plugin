@@ -242,13 +242,10 @@ export default function aiWardenPlugin(api: any) {
             }
           }
           
+          // Note: We DON'T throw here anymore - warning already injected
+          // Let LLM continue and relay the warning to user naturally
           if (shouldBlock) {
-            const blockMessage = (result.risk || 0) > 50
-              ? '⛔️ Message blocked by security policy'
-              : `⚠️ Message blocked: ${result.message || 'Security policy violation'}`;
-            
-            console.log('[AI-Warden] ⛔️ LAYER 1 BLOCKING MESSAGE:', blockMessage);
-            throw new Error(blockMessage);
+            console.log('[AI-Warden] ⚠️ High-risk input detected, warning injected for LLM relay');
           }
           
           if (config.verbose) {
