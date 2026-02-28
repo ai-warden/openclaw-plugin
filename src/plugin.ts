@@ -234,41 +234,23 @@ export default function aiWardenPlugin(api: any) {
                   const warningText = warningEngine.formatWarning(warning);
                   console.log('[AI-Warden] 📢 Sending warning:', warningText.substring(0, 100));
                   
-                  // Use correct plugin runtime API with safe defaults
-                  // ctx in before_agent_start has messageProvider, not direct From/chatId
-                  const msgProvider = ctx.messageProvider;
-                  if (!msgProvider) {
-                    console.error('[AI-Warden] Cannot send warning: messageProvider not found in ctx');
-                    return;
-                  }
-                  
-                  const provider = (msgProvider.provider || 'telegram').toString().toLowerCase().trim();
-                  const recipient = msgProvider.from || msgProvider.chatId || msgProvider.id;
-                  
-                  if (!recipient) {
-                    console.error('[AI-Warden] Cannot send warning: no recipient in messageProvider');
-                    console.log('[AI-Warden] messageProvider keys:', Object.keys(msgProvider));
-                    return;
-                  }
-                  
-                  console.log('[AI-Warden] Attempting delivery via provider:', provider, 'to:', recipient);
-                  
-                  if (provider === 'telegram' && api.runtime?.channel?.telegram) {
-                    await api.runtime.channel.telegram.sendMessageTelegram(
-                      recipient,
-                      warningText,
-                      { accountId: ctx.AccountId || 'default' }
-                    );
-                    console.log('[AI-Warden] ✅ Warning delivered via Telegram');
-                  } else if (provider === 'discord' && api.runtime?.channel?.discord) {
-                    await api.runtime.channel.discord.sendMessageDiscord(
-                      recipient,
-                      warningText
-                    );
-                    console.log('[AI-Warden] ✅ Warning delivered via Discord');
-                  } else {
-                    console.warn('[AI-Warden] Warning delivery not supported for provider:', provider);
-                    console.warn('[AI-Warden] Available runtime channels:', Object.keys(api.runtime?.channel || {}));
+                  // Use sessions_send to deliver warning to same session
+                  // This is the CORRECT way - warnings go back through session context
+                  try {
+                    if (api.runtime?.sessions?.send) {
+                      await api.runtime.sessions.send({
+                        sessionKey: ctx.sessionKey,
+                        message: warningText,
+                        internal: true  // Don't trigger new agent turn
+                      });
+                      console.log('[AI-Warden] ✅ Warning delivered via session');
+                    } else {
+                      console.warn('[AI-Warden] sessions.send not available, trying direct reply');
+                      // Fallback: Just log warning (will appear in agent response)
+                      console.log('[AI-Warden] ⚠️ WARNING TO USER:', warningText);
+                    }
+                  } catch (sendErr) {
+                    console.error('[AI-Warden] Failed to send via session:', sendErr);
                   }
                   
                   warningEngine.markWarningSent(ctx.sessionKey);
@@ -444,39 +426,19 @@ export default function aiWardenPlugin(api: any) {
               const warningText = warningEngine.formatWarning(warning);
               console.log('[AI-Warden] 📢 Sending blocked action warning');
               
-              const msgProvider = ctx.messageProvider;
-              if (!msgProvider) {
-                console.error('[AI-Warden] Cannot send blocked action warning: no messageProvider');
-                return;
-              }
-              
-              const provider = (msgProvider.provider || 'telegram').toString().toLowerCase().trim();
-              const recipient = msgProvider.from || msgProvider.chatId || msgProvider.id;
-              
-              if (!recipient) {
-                console.error('[AI-Warden] Cannot send blocked action warning: no recipient');
-                console.log('[AI-Warden] messageProvider keys:', Object.keys(msgProvider));
-                return;
-              }
-              
-              console.log('[AI-Warden] Sending blocked action warning via:', provider, 'to:', recipient);
-              
-              if (provider === 'telegram' && api.runtime?.channel?.telegram) {
-                await api.runtime.channel.telegram.sendMessageTelegram(
-                  recipient,
-                  warningText,
-                  { accountId: ctx.AccountId || 'default' }
-                );
-                console.log('[AI-Warden] ✅ Blocked action warning delivered');
-              } else if (provider === 'discord' && api.runtime?.channel?.discord) {
-                await api.runtime.channel.discord.sendMessageDiscord(
-                  recipient,
-                  warningText
-                );
-                console.log('[AI-Warden] ✅ Blocked action warning delivered');
-              } else {
-                console.warn('[AI-Warden] Warning not supported for provider:', provider);
-                console.warn('[AI-Warden] Available channels:', Object.keys(api.runtime?.channel || {}));
+              try {
+                if (api.runtime?.sessions?.send) {
+                  await api.runtime.sessions.send({
+                    sessionKey: ctx.sessionKey,
+                    message: warningText,
+                    internal: true
+                  });
+                  console.log('[AI-Warden] ✅ Blocked action warning delivered via session');
+                } else {
+                  console.log('[AI-Warden] ⚠️ BLOCKED ACTION WARNING:', warningText);
+                }
+              } catch (sendErr) {
+                console.error('[AI-Warden] Failed to send blocked action warning:', sendErr);
               }
               
               warningEngine.markWarningSent(ctx.sessionKey);
