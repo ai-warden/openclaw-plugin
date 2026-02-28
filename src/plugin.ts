@@ -203,15 +203,8 @@ export default function aiWardenPlugin(api: any) {
           
           // DEBUG: Log entire ctx to find recipient field
           console.log('[AI-Warden] 🔍 DEBUG ctx keys:', Object.keys(ctx));
-          console.log('[AI-Warden] 🔍 DEBUG ctx sample:', JSON.stringify({
-            From: ctx.From,
-            from: ctx.from,
-            chatId: ctx.chatId,
-            channelId: ctx.channelId,
-            sessionKey: ctx.sessionKey,
-            Provider: ctx.Provider,
-            Surface: ctx.Surface
-          }, null, 2));
+          console.log('[AI-Warden] 🔍 DEBUG ctx.messageProvider:', JSON.stringify(ctx.messageProvider, null, 2));
+          console.log('[AI-Warden] 🔍 DEBUG full ctx:', JSON.stringify(ctx, null, 2));
           
           // Check if warning needed (even if not blocking)
           if (!result.safe || (result.risk && result.risk > 0.5)) {
