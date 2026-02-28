@@ -222,15 +222,22 @@ export default function aiWardenPlugin(api: any) {
                   const warningText = warningEngine.formatWarning(warning);
                   console.log('[AI-Warden] 📢 Sending warning:', warningText.substring(0, 100));
                   
-                  // Use correct plugin runtime API
-                  const provider = ctx.Provider || ctx.Surface || 'telegram';
-                  const recipient = ctx.From;
+                  // Use correct plugin runtime API with safe defaults
+                  const provider = (ctx.Provider || ctx.Surface || 'telegram').toString().toLowerCase().trim();
+                  const recipient = ctx.From || ctx.from || ctx.chatId;
+                  
+                  if (!recipient) {
+                    console.error('[AI-Warden] Cannot send warning: no recipient found in ctx');
+                    return;
+                  }
+                  
+                  console.log('[AI-Warden] Attempting delivery via provider:', provider, 'to:', recipient);
                   
                   if (provider === 'telegram' && api.runtime?.channel?.telegram) {
                     await api.runtime.channel.telegram.sendMessageTelegram(
                       recipient,
                       warningText,
-                      { accountId: ctx.AccountId }
+                      { accountId: ctx.AccountId || 'default' }
                     );
                     console.log('[AI-Warden] ✅ Warning delivered via Telegram');
                   } else if (provider === 'discord' && api.runtime?.channel?.discord) {
@@ -241,6 +248,7 @@ export default function aiWardenPlugin(api: any) {
                     console.log('[AI-Warden] ✅ Warning delivered via Discord');
                   } else {
                     console.warn('[AI-Warden] Warning delivery not supported for provider:', provider);
+                    console.warn('[AI-Warden] Available runtime channels:', Object.keys(api.runtime?.channel || {}));
                   }
                   
                   warningEngine.markWarningSent(ctx.sessionKey);
@@ -416,14 +424,21 @@ export default function aiWardenPlugin(api: any) {
               const warningText = warningEngine.formatWarning(warning);
               console.log('[AI-Warden] 📢 Sending blocked action warning');
               
-              const provider = ctx.Provider || ctx.Surface || 'telegram';
-              const recipient = ctx.From;
+              const provider = (ctx.Provider || ctx.Surface || 'telegram').toString().toLowerCase().trim();
+              const recipient = ctx.From || ctx.from || ctx.chatId;
+              
+              if (!recipient) {
+                console.error('[AI-Warden] Cannot send blocked action warning: no recipient');
+                return;
+              }
+              
+              console.log('[AI-Warden] Sending blocked action warning via:', provider, 'to:', recipient);
               
               if (provider === 'telegram' && api.runtime?.channel?.telegram) {
                 await api.runtime.channel.telegram.sendMessageTelegram(
                   recipient,
                   warningText,
-                  { accountId: ctx.AccountId }
+                  { accountId: ctx.AccountId || 'default' }
                 );
                 console.log('[AI-Warden] ✅ Blocked action warning delivered');
               } else if (provider === 'discord' && api.runtime?.channel?.discord) {
@@ -434,6 +449,7 @@ export default function aiWardenPlugin(api: any) {
                 console.log('[AI-Warden] ✅ Blocked action warning delivered');
               } else {
                 console.warn('[AI-Warden] Warning not supported for provider:', provider);
+                console.warn('[AI-Warden] Available channels:', Object.keys(api.runtime?.channel || {}));
               }
               
               warningEngine.markWarningSent(ctx.sessionKey);
