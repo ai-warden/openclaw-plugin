@@ -201,10 +201,17 @@ export default function aiWardenPlugin(api: any) {
           // Track last user message for warning context
           warningEngine.updateLastUserMessage(ctx.sessionKey, content);
           
-          // DEBUG: Log entire ctx to find recipient field
+          // DEBUG: Log entire ctx AND event to find recipient field
           console.log('[AI-Warden] 🔍 DEBUG ctx keys:', Object.keys(ctx));
-          console.log('[AI-Warden] 🔍 DEBUG ctx.messageProvider:', JSON.stringify(ctx.messageProvider, null, 2));
-          console.log('[AI-Warden] 🔍 DEBUG full ctx:', JSON.stringify(ctx, null, 2));
+          console.log('[AI-Warden] 🔍 DEBUG ctx.messageProvider:', ctx.messageProvider);
+          console.log('[AI-Warden] 🔍 DEBUG event keys:', Object.keys(event));
+          console.log('[AI-Warden] 🔍 DEBUG event sample:', JSON.stringify({
+            provider: event.provider,
+            from: event.from,
+            chatId: event.chatId,
+            channelId: event.channelId,
+            surface: event.surface
+          }, null, 2));
           
           // Check if warning needed (even if not blocking)
           if (!result.safe || (result.risk && result.risk > 0.5)) {
