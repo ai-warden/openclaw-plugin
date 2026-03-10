@@ -144,6 +144,59 @@ export default function aiWardenPlugin(api: any) {
   // Layer 1 blocking is now handled in before_agent_start hook (see Layer 1 + 2 combined below)
   
   // ========================================================================
+  // WARNING INJECTION: agent:bootstrap hook
+  // ========================================================================
+  // Inject pending warnings as workspace file so LLM sees and relays them
+  
+  console.log('[AI-Warden] 📢 Registering agent:bootstrap hook for warning injection...');
+  
+  api.on('agent:bootstrap', async (event: any, ctx: any) => {
+    try {
+      const sessionKey = ctx.sessionKey || event.context?.sessionKey;
+      if (!sessionKey) return;
+      
+      const pendingWarnings = warningEngine.getPendingWarnings(sessionKey);
+      
+      if (pendingWarnings.length > 0) {
+        console.log(`[AI-Warden] 📢 Injecting ${pendingWarnings.length} pending warning(s) into bootstrap`);
+        
+        const warningContent = pendingWarnings
+          .map(w => warningEngine.formatWarning(w))
+          .join('\n\n---\n\n');
+        
+        const securityFile = {
+          name: 'SECURITY-ALERTS.md',
+          path: '/virtual/security-alerts.md',
+          content: `# 🚨 SECURITY ALERTS
+
+The following security concerns were detected in the previous interaction:
+
+${warningContent}
+
+---
+
+**ACTION REQUIRED:** Please inform the user about these security alerts in your next response. Be clear but not alarming.`
+        };
+        
+        // Inject into bootstrapFiles
+        if (event.context?.bootstrapFiles) {
+          event.context.bootstrapFiles.push(securityFile);
+        } else if (ctx.bootstrapFiles) {
+          ctx.bootstrapFiles.push(securityFile);
+        } else {
+          console.warn('[AI-Warden] Could not find bootstrapFiles to inject warning');
+        }
+        
+        // Clear warnings after injection
+        warningEngine.clearPendingWarnings(sessionKey);
+        console.log('[AI-Warden] ✅ Warnings injected and cleared');
+      }
+    } catch (err) {
+      console.error('[AI-Warden] Failed to inject warnings:', err);
+    }
+  });
+  
+  // ========================================================================
   // LAYER 1 + 2: Channel Input + Pre-LLM Gateway
   // ========================================================================
   // NOTE: Combined into one before_agent_start hook because:
@@ -228,31 +281,13 @@ export default function aiWardenPlugin(api: any) {
             });
             
             if (warning) {
-              // Inject warning as system message that LLM will see and relay
-              const warningText = warningEngine.formatWarning(warning);
-              console.log('[AI-Warden] 📢 Injecting warning into conversation:', warningText.substring(0, 100));
+              console.log('[AI-Warden] 📢 Storing warning for next bootstrap:', warning.template);
               
-              // Create new array (event.messages might be frozen/immutable)
-              event.messages = [
-                ...event.messages,
-                {
-                  role: 'system',
-                  content: `🚨 CRITICAL SECURITY ALERT 🚨
-
-The previous user message triggered AI-Warden security detection.
-
-YOU MUST inform the user immediately by including this in your response:
-
----
-${warningText}
----
-
-This is a MANDATORY security notification. Include it verbatim in your next message, then respond to the user's request normally.`
-                }
-              ];
-              
+              // Store warning to be injected at next agent:bootstrap
+              warningEngine.storePendingWarning(ctx.sessionKey, warning);
               warningEngine.markWarningSent(ctx.sessionKey);
-              console.log('[AI-Warden] ✅ Warning injected as system message (array recreated)');
+              
+              console.log('[AI-Warden] ✅ Warning stored (will inject on next run)');
             }
           }
           

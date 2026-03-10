@@ -325,6 +325,24 @@ export class WarningDecisionEngine {
     this.sessionStates.delete(sessionId);
   }
 
+  // New: Store pending warnings for next bootstrap
+  private pendingWarnings = new Map<string, Warning[]>();
+
+  storePendingWarning(sessionId: string, warning: Warning): void {
+    if (!this.pendingWarnings.has(sessionId)) {
+      this.pendingWarnings.set(sessionId, []);
+    }
+    this.pendingWarnings.get(sessionId)!.push(warning);
+  }
+
+  getPendingWarnings(sessionId: string): Warning[] {
+    return this.pendingWarnings.get(sessionId) || [];
+  }
+
+  clearPendingWarnings(sessionId: string): void {
+    this.pendingWarnings.delete(sessionId);
+  }
+
   formatWarning(warning: Warning): string {
     const tmpl = WARNING_TEMPLATES[warning.template];
     const { icon } = SEVERITY[tmpl.severity];
