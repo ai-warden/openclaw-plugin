@@ -127,7 +127,7 @@ export class WarningDecisionEngine {
   private readonly MIN_TIME_BETWEEN_WARNINGS = 3000; // 3s
   private readonly MAX_WARNINGS_PER_SESSION = 10;
   private readonly REPEAT_ATTACK_THRESHOLD = 3;
-  private readonly INPUT_THREAT_MIN_CONFIDENCE = 0.7;
+  private readonly INPUT_THREAT_MIN_CONFIDENCE = 0.3; // Lowered for local scan testing
   private readonly WAIT_FOR_FOLLOWUP_MS = 2000;
   private readonly LINK_WINDOW_MS = 10000; // 10s
 
