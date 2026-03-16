@@ -36,8 +36,10 @@ Attack neutralized - LLM never saw the injection!
 
 ## 🚀 Quick Start (5 Minutes)
 
-### ⚡ Full Installation (Plugin + Core Patch)
+### ⚡ Installation
 
+**Requirements:** OpenClaw >= 2026.1.24  
+**Tested on:** 2026.3.13, 2026.3.12, 2026.1.27-beta.1  
 **Works on:** Linux, macOS, Docker (all platforms)
 
 ```bash
@@ -47,10 +49,7 @@ git clone https://github.com/ai-warden/openclaw-plugin.git ai-warden
 cd ai-warden
 npm install && npm run build
 
-# 2. Apply core security patch (enables Layer 0 blocking)
-bash apply-moltbot-security-patch.sh
-
-# 3. Configure - Add to ~/.moltbot/moltbot.json:
+# 2. Configure - Add to ~/.moltbot/moltbot.json:
 {
   "plugins": {
     "entries": {
@@ -71,13 +70,16 @@ bash apply-moltbot-security-patch.sh
   }
 }
 
+# 3. Trust plugin (OpenClaw 2026.3.12+)
+moltbot plugins trust ai-warden
+
 # 4. Restart
 moltbot gateway restart  # or: docker compose restart
-docker compose restart
 
 # Verify installation
 docker compose logs | grep AI-Warden
-# Expected: [AI-Warden] Plugin initialized with runtime layer control
+# Expected: [AI-Warden] ✅ Plugin v1.1.0 initialized with runtime layer control
+# Expected: [AI-Warden] 🔐 Layer 0: Hook-based content validation (NEW in v1.1.0)
 ```
 
 **Windows PowerShell:**

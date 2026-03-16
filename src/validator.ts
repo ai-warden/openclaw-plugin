@@ -193,11 +193,33 @@ export class SecurityValidator {
   
   /**
    * Validate tool arguments (Layer 3)
+   * 
+   * v1.1.0: Added sessions_yield and browser.existing_session to safe tools
    */
   async validateToolArgs(params: {
     toolName: string;
     params: Record<string, unknown>;
   }): Promise<ValidationResult> {
+    // Safe tools that don't require validation (allowlist approach)
+    const safeTool = [
+      'session_status',
+      'sessions_yield',        // NEW in 2026.3.12: Subagent orchestration
+      'browser.existing_session', // NEW in 2026.3.13: Chrome MCP attach
+      'read',
+      'write',
+      'web_search',
+      'web_fetch',
+      'browser',
+      'canvas',
+      'nodes',
+      'tts'
+    ].includes(params.toolName);
+    
+    if (safeTool) {
+      return { block: false };
+    }
+    
+    // Validate specific high-risk tools
     switch (params.toolName) {
       case 'exec':
         return this.validateExec(params.params);
@@ -206,6 +228,10 @@ export class SecurityValidator {
       case 'message':
         return this.validateMessage(params.params);
       default:
+        // Unknown tool - fail open but log warning
+        if (this.config.verbose) {
+          console.warn(`[AI-Warden] Unknown tool '${params.toolName}' - allowing by default`);
+        }
         return { block: false };
     }
   }

@@ -19,9 +19,79 @@ import { createMessageBlocker } from './message-blocker.js';
 import { createSecurityGuard } from './security-guard.js';
 import { createTelegramBlocker } from './telegram-blocker.js';
 import { WarningDecisionEngine } from './warning-engine.js';
+import { registerLayer0 } from './layers/layer0-content.js';
 import type { SecurityConfig } from './types.js';
 
+/**
+ * Version compatibility constants
+ * Updated for OpenClaw 2026.3.13 compatibility
+ */
+const MIN_OPENCLAW_VERSION = "2026.1.24";
+const TESTED_OPENCLAW_VERSIONS = [
+  "2026.1.27-beta.1",
+  "2026.3.11",
+  "2026.3.12",
+  "2026.3.13-beta.1",
+  "2026.3.13"
+];
+
+/**
+ * Compare version strings (simple semver comparison)
+ */
+function compareVersions(a: string, b: string): number {
+  const parseVersion = (v: string) => {
+    const match = v.match(/(\d+)\.(\d+)\.(\d+)/);
+    if (!match) return [0, 0, 0];
+    return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
+  };
+  
+  const [aMajor, aMinor, aPatch] = parseVersion(a);
+  const [bMajor, bMinor, bPatch] = parseVersion(b);
+  
+  if (aMajor !== bMajor) return aMajor - bMajor;
+  if (aMinor !== bMinor) return aMinor - bMinor;
+  return aPatch - bPatch;
+}
+
 export default function aiWardenPlugin(api: any) {
+  // ========================================================================
+  // VERSION COMPATIBILITY CHECK (v1.1.0 - NEW)
+  // ========================================================================
+  const openclawVersion = api.runtime?.version || api.version || "unknown";
+  
+  console.log(`[AI-Warden] Plugin v1.1.0 initializing on OpenClaw ${openclawVersion}`);
+  
+  if (openclawVersion !== "unknown") {
+    // Check minimum version requirement
+    if (compareVersions(openclawVersion, MIN_OPENCLAW_VERSION) < 0) {
+      const errorMsg = 
+        `[AI-Warden] ❌ INCOMPATIBLE VERSION\n` +
+        `  Required: OpenClaw >= ${MIN_OPENCLAW_VERSION}\n` +
+        `  Found: ${openclawVersion}\n` +
+        `  Please upgrade OpenClaw to use AI-Warden v1.1.0`;
+      
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    // Check if running on tested version
+    if (TESTED_OPENCLAW_VERSIONS.includes(openclawVersion)) {
+      console.log(`[AI-Warden] ✅ Verified compatible with OpenClaw ${openclawVersion}`);
+    } else {
+      console.warn(
+        `[AI-Warden] ⚠️ Running on UNTESTED OpenClaw version: ${openclawVersion}\n` +
+        `  Tested versions: ${TESTED_OPENCLAW_VERSIONS.join(', ')}\n` +
+        `  Plugin may not work correctly. Please report issues to:\n` +
+        `  https://github.com/ai-warden/openclaw-plugin/issues`
+      );
+    }
+  } else {
+    console.warn('[AI-Warden] ⚠️ Could not detect OpenClaw version - proceeding with caution');
+  }
+  
+  // ========================================================================
+  // PLUGIN CONFIGURATION
+  // ========================================================================
   // Plugin config with defaults (Moltbot may pass undefined/empty config)
   const config: SecurityConfig = {
     layers: {
@@ -547,96 +617,18 @@ ${warningContent}
   });
   
   // ========================================================================
-  // LAYER 0: Content Tool Wrappers (CRITICAL)
+  // LAYER 0: Content Validation (HOOK-BASED - v1.1.0)
   // ========================================================================
+  // NEW in v1.1.0: Replaced source patching with proper hook-based approach
+  // Uses tool_result_persist synchronous hook for CRITICAL security validation
   
-  if (stateManager.isLayerEnabled('content')) {
-    // We need to intercept tool creation to wrap web_fetch, browser, read
-    // This is more complex and depends on OpenClaw's plugin API
-    
-    // Approach 1: If OpenClaw supports tool wrapping hooks
-    api.on('tool_created', (event: any) => {
-      if (event.toolName === 'web_fetch') {
-        if (config.verbose) {
-          console.log('[AI-Warden] Layer 0: Wrapping web_fetch with content scanner');
-        }
-        
-        const secureWrapper = createSecureWebFetchWrapper(
-          event.tool,
-          validator,
-          {
-            blockThreshold: config.policy?.blockThreshold || 200,
-            warnThreshold: config.policy?.warnThreshold || 100,
-            logWarnings: config.verbose || false
-          },
-          (params) => stateManager.recordScan(params)
-        );
-        
-        return { tool: secureWrapper };
-      }
-      
-      // TODO: Add similar wrappers for 'browser' and 'read' tools
-    });
-    
-    // Approach 2: If tool wrapping isn't supported, use after_tool_call
-    // (Less secure - content already in LLM context, but better than nothing)
-    api.on('after_tool_call', async (event: any, ctx: any) => {
-      const contentTools = ['web_fetch', 'browser', 'read'];
-      if (!contentTools.includes(event.toolName)) return;
-      
-      if (config.verbose) {
-        console.log(`[AI-Warden] Layer 0 fallback: Scanning ${event.toolName} result`);
-      }
-      
-      // Extract and scan content
-      const content = extractContentFromResult(event.result);
-      if (!content) return;
-      
-      const scanResult = await validator.scanContent({
-        content,
-        source: event.toolName,
-        metadata: { toolCallId: event.toolCallId }
-      });
-      
-      if (!scanResult.safe) {
-        // Log critical alert - content already in context but we can alert
-        console.error(
-          `[AI-Warden] ⚠️ CRITICAL: Malicious content detected AFTER tool execution!`,
-          `Tool: ${event.toolName}, Score: ${scanResult.risk || 0}, Reason: ${scanResult.message}`
-        );
-        
-        // Could trigger additional actions here:
-        // - Send alert to admin
-        // - Kill the session
-        // - Log to security dashboard
-      }
-    });
-  }
+  registerLayer0(api, config, stateManager);
   
   // Register /warden commands
   registerWardenCommands(api, config, stateManager);
   
-  // Log initialization
-  console.log('[AI-Warden] Plugin initialized with runtime layer control');
-  console.log('[AI-Warden] Use /warden to manage security layers');
-}
-
-/**
- * Helper: Extract content from tool result
- */
-function extractContentFromResult(result: any): string | null {
-  if (!result?.details) return null;
-  
-  if (typeof result.details.text === 'string') {
-    return result.details.text;
-  }
-  
-  if (Array.isArray(result.content)) {
-    const textBlocks = result.content.filter(
-      (block: any) => block?.type === 'text' && typeof block.text === 'string'
-    );
-    return textBlocks.map((b: any) => b.text).join('\n');
-  }
-  
-  return null;
+  // Final initialization log
+  console.log('[AI-Warden] ✅ Plugin v1.1.0 initialized with runtime layer control');
+  console.log('[AI-Warden] 📋 Use /warden to manage security layers');
+  console.log('[AI-Warden] 🔐 Layer 0: Hook-based content validation (NEW in v1.1.0)');
 }
