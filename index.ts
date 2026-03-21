@@ -38,20 +38,11 @@ function register(api: any) {
     verbose: raw.verbose || false,
   };
 
-  // ── Auto-update ai-warden (best-effort) ─────────────────────────────
-  if (config.autoUpdate) {
-    try {
-      console.log(`${TAG} Checking for ai-warden updates...`);
-      execSync("npm install ai-warden@latest --prefer-online --no-audit --no-fund", {
-        cwd: import.meta.dirname || new URL(".", import.meta.url).pathname,
-        timeout: 30_000,
-        stdio: "pipe",
-      });
-      console.log(`${TAG} ✅ ai-warden up to date`);
-    } catch (err: any) {
-      console.warn(`${TAG} ⚠️ Auto-update skipped: ${err?.message?.split("\n")[0]}`);
-    }
-  }
+  // ── Auto-update ai-warden (disabled during hot-reload) ──────────────
+  // NOTE: npm install modifies node_modules which triggers OpenClaw's
+  // file watcher → plugin reload → register() → npm install → infinite loop.
+  // Auto-update should only run via a scheduled command, not in register().
+  // TODO: Move to /warden update command or startup hook
 
   // ── Initialize scanner ──────────────────────────────────────────────
   const scanner = new Scanner(config.apiKey);
