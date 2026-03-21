@@ -1,0 +1,38 @@
+{
+  "id": "ai-warden",
+  "name": "AI-Warden Security",
+  "version": "2.0.0",
+  "description": "Multi-layer prompt injection protection for OpenClaw agents",
+  "author": "AI-Warden",
+  "license": "MIT",
+  "homepage": "https://ai-warden.io",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiKey": { "type": "string" },
+      "layers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content":    { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "block" },
+          "channel":    { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "warn" },
+          "preLlm":     { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "off" },
+          "toolArgs":   { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "warn" },
+          "subagents":  { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "warn" },
+          "output":     { "type": "string", "enum": ["block", "warn", "log", "off"], "default": "warn" }
+        }
+      },
+      "pii": { "type": "string", "enum": ["ignore", "mask", "remove"], "default": "mask" },
+      "sensitivity": { "type": "string", "enum": ["low", "balanced", "high", "paranoid"], "default": "balanced" },
+      "autoUpdate": { "type": "boolean", "default": true },
+      "verbose": { "type": "boolean", "default": false }
+    }
+  },
+  "uiHints": {
+    "apiKey": { "label": "AI-Warden API Key", "sensitive": true, "placeholder": "sk_live_..." },
+    "sensitivity": { "label": "Detection Sensitivity" },
+    "pii": { "label": "PII Handling Mode" },
+    "verbose": { "label": "Verbose Logging" }
+  }
+}

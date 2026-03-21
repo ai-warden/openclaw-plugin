@@ -1,149 +1,82 @@
 /**
- * AI-Warden Security Plugin for Moltbot/OpenClaw
- * 
- * Multi-layer security validation for AI agents
- * - Content filtering
- * - Channel validation  
- * - Tool argument scanning
- * - Sub-agent spawn validation
- * - Output filtering
- * 
- * @see https://github.com/ai-warden/openclaw-plugin
+ * AI-Warden Security Plugin for OpenClaw — v2.0
+ *
+ * Multi-layer prompt injection protection.
+ * All detection logic lives in the `ai-warden` npm package.
+ * This plugin only wires it to OpenClaw's plugin API.
  */
 
-import aiWardenPlugin from './src/plugin.js';
+import { execSync } from "node:child_process";
+import { Scanner } from "./src/scanner.js";
+import { State } from "./src/state.js";
+import { registerLayers } from "./src/layers.js";
+import { registerCommands } from "./src/commands.js";
+import type { PluginConfig, LayerAction } from "./src/types.js";
 
-/**
- * Plugin export for Moltbot discovery system
- * Required fields: id, name, configSchema, register
- */
-export default {
-  id: 'openclaw-plugin',
-  name: 'AI-Warden Security',
-  description: 'Multi-layer security validation for AI agents',
-  version: '1.0.1',
-  
-  /**
-   * Configuration schema for plugin settings
-   * Exposed in Moltbot config.yaml under plugins.ai-warden
-   */
-  configSchema: {
-    type: 'object',
-    properties: {
-      enabled: {
-        type: 'boolean',
-        description: 'Enable AI-Warden security plugin',
-        default: true
-      },
-      apiKey: {
-        type: 'string',
-        description: 'AI-Warden API key (optional - auto-detects from env AI_WARDEN_API_KEY)',
-        default: ''
-      },
-      layers: {
-        type: 'object',
-        description: 'Security layer configuration - toggle individual layers on/off',
-        properties: {
-          content: {
-            type: 'boolean',
-            description: 'Content filtering layer (incoming messages)',
-            default: true
-          },
-          channel: {
-            type: 'boolean',
-            description: 'Channel validation layer',
-            default: true
-          },
-          preLlm: {
-            type: 'boolean',
-            description: 'Pre-LLM validation layer (before model invocation)',
-            default: false
-          },
-          toolArgs: {
-            type: 'boolean',
-            description: 'Tool argument validation layer',
-            default: true
-          },
-          subagents: {
-            type: 'boolean',
-            description: 'Sub-agent spawn validation layer',
-            default: true
-          },
-          output: {
-            type: 'boolean',
-            description: 'Output filtering layer (outgoing messages)',
-            default: true
-          }
-        },
-        default: {
-          content: true,
-          channel: true,
-          preLlm: false,
-          toolArgs: true,
-          subagents: true,
-          output: true
-        }
-      },
-      policy: {
-        type: 'object',
-        description: 'Security policy thresholds and behavior',
-        properties: {
-          blockThreshold: {
-            type: 'number',
-            description: 'Block requests with risk score above this value (0-1000)',
-            default: 200,
-            minimum: 0,
-            maximum: 1000
-          },
-          warnThreshold: {
-            type: 'number',
-            description: 'Warn on requests with risk score above this value (0-1000)',
-            default: 100,
-            minimum: 0,
-            maximum: 1000
-          },
-          failOpen: {
-            type: 'boolean',
-            description: 'Allow requests if AI-Warden API is unreachable (fail-open vs fail-closed)',
-            default: true
-          }
-        },
-        default: {
-          blockThreshold: 200,
-          warnThreshold: 100,
-          failOpen: true
-        }
-      },
-      enableStats: {
-        type: 'boolean',
-        description: 'Enable statistics tracking',
-        default: true
-      }
+const TAG = "[AI-Warden]";
+const VERSION = "2.0.0";
+
+function register(api: any) {
+  console.log(`${TAG} Plugin v${VERSION} initializing...`);
+
+  // ── Read config ─────────────────────────────────────────────────────
+  const raw = api.pluginConfig || {};
+
+  const config: PluginConfig = {
+    apiKey: raw.apiKey || process.env.AI_WARDEN_API_KEY || "",
+    layers: {
+      content: raw.layers?.content || "block",
+      channel: raw.layers?.channel || "warn",
+      preLlm: raw.layers?.preLlm || "off",
+      toolArgs: raw.layers?.toolArgs || "warn",
+      subagents: raw.layers?.subagents || "warn",
+      output: raw.layers?.output || "warn",
     },
-    default: {
-      enabled: true,
-      layers: {
-        content: true,
-        channel: true,
-        preLlm: false,
-        toolArgs: true,
-        subagents: true,
-        output: true
-      },
-      policy: {
-        blockThreshold: 200,
-        warnThreshold: 100,
-        failOpen: true
-      },
-      enableStats: true
+    pii: raw.pii || "mask",
+    sensitivity: raw.sensitivity || "balanced",
+    autoUpdate: raw.autoUpdate !== false,
+    verbose: raw.verbose || false,
+  };
+
+  // ── Auto-update ai-warden (best-effort) ─────────────────────────────
+  if (config.autoUpdate) {
+    try {
+      console.log(`${TAG} Checking for ai-warden updates...`);
+      execSync("npm install ai-warden@latest --prefer-online --no-audit --no-fund", {
+        cwd: import.meta.dirname || new URL(".", import.meta.url).pathname,
+        timeout: 30_000,
+        stdio: "pipe",
+      });
+      console.log(`${TAG} ✅ ai-warden up to date`);
+    } catch (err: any) {
+      console.warn(`${TAG} ⚠️ Auto-update skipped: ${err?.message?.split("\n")[0]}`);
     }
-  },
-  
-  /**
-   * Plugin registration function
-   * Called by Moltbot when plugin is loaded
-   * 
-   * @param api - Moltbot plugin API
-   */
-  register: aiWardenPlugin
+  }
+
+  // ── Initialize scanner ──────────────────────────────────────────────
+  const scanner = new Scanner(config.apiKey);
+  const state = new State(config);
+
+  // ── Register layers ─────────────────────────────────────────────────
+  registerLayers(api, scanner, state, config.verbose);
+
+  // ── Register /warden command ────────────────────────────────────────
+  registerCommands(api, state);
+
+  // ── Ready ───────────────────────────────────────────────────────────
+  const enabledLayers = Object.entries(config.layers)
+    .filter(([_, v]) => v !== "off")
+    .map(([k]) => k);
+
+  console.log(
+    `${TAG} 🛡️ v${VERSION} ready (mode: ${scanner.mode}, layers: ${enabledLayers.length}/6: ${enabledLayers.join(", ")})`
+  );
+}
+
+export default {
+  id: "ai-warden",
+  name: "AI-Warden Security",
+  description: "Multi-layer prompt injection protection for OpenClaw agents",
+  version: VERSION,
+  register,
 };
