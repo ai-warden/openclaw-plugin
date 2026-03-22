@@ -95,7 +95,16 @@ async function runTests() {
     
     for (const tc of TEST_CASES) {
       try {
-        const r = await apiScanner.validate(tc.text);
+        const raw = await apiScanner.validate(tc.text);
+        // Normalize API response: API returns {safe, decision} not {passed}
+        const r = typeof raw.passed === "boolean" ? raw : {
+          ...raw,
+          passed: raw.safe === true || raw.decision === "ALLOW",
+          riskScore: raw.confidence || raw.riskScore || 0,
+          riskLevel: raw.safe ? "NONE" : (raw.confidence >= 0.9 ? "CRITICAL" : raw.confidence >= 0.7 ? "HIGH" : "MEDIUM"),
+          findings: raw.safe ? [] : [{ name: `API: ${raw.layer || "cascade"}` }],
+          stats: { scanTimeMs: raw.latency_ms || 0 },
+        };
         const correct = tc.category === "attack" ? !r.passed : r.passed;
         
         results.push({
