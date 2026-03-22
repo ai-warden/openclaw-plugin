@@ -6,21 +6,37 @@ const VALID_ACTIONS: LayerAction[] = ["block", "warn", "log", "off"];
 const VALID_PII = ["ignore", "mask", "remove"] as const;
 
 export function registerCommands(api: any, state: State) {
-  api.registerCommand({
+  console.log('[AI-Warden] Registering /warden command, api.registerCommand exists:', !!api.registerCommand);
+  
+  api.registerCommand?.({
     name: "warden",
     description: "AI-Warden security layer management",
     acceptsArgs: true,
-    requireAuth: true,
-    handler: async (args: string, ctx: any) => {
-      const parts = (args || "").trim().split(/\s+/);
+    requireAuth: false,
+    handler: async (args: any, ctx: any) => {
+      // Handle multiple arg formats
+      let argsStr: string;
+      if (typeof args === 'string') {
+        argsStr = args;
+      } else if (Array.isArray(args)) {
+        argsStr = args.join(' ');
+      } else if (args?.args) {
+        argsStr = typeof args.args === 'string' ? args.args : args.args.join(' ');
+      } else if (args?.commandBody) {
+        argsStr = args.commandBody.replace(/^\/warden\s*/, '');
+      } else {
+        argsStr = '';
+      }
+      
+      const parts = argsStr.trim().split(/\s+/);
       const sub = parts[0]?.toLowerCase() || "status";
 
       switch (sub) {
         case "status":
-          return { reply: state.getStatus() };
+          return { text: state.getStatus() };
 
         case "stats":
-          return { reply: state.getStats() };
+          return { text: state.getStats() };
 
         case "layer": {
           const layerName = parts[1]?.toLowerCase() as LayerName;
@@ -28,18 +44,18 @@ export function registerCommands(api: any, state: State) {
 
           if (!layerName || !VALID_LAYERS.includes(layerName)) {
             return {
-              reply: `Usage: /warden layer <name> <action>\nLayers: ${VALID_LAYERS.join(", ")}\nActions: ${VALID_ACTIONS.join(", ")}`,
+              text: `Usage: /warden layer <name> <action>\nLayers: ${VALID_LAYERS.join(", ")}\nActions: ${VALID_ACTIONS.join(", ")}`,
             };
           }
           if (!action || !VALID_ACTIONS.includes(action)) {
             return {
-              reply: `Invalid action. Use: ${VALID_ACTIONS.join(", ")}`,
+              text: `Invalid action. Use: ${VALID_ACTIONS.join(", ")}`,
             };
           }
 
           state.setAction(layerName, action);
           return {
-            reply: `🛡️ Layer **${layerName}** set to **${action}**`,
+            text: `🛡️ Layer **${layerName}** set to **${action}**`,
           };
         }
 
@@ -47,20 +63,20 @@ export function registerCommands(api: any, state: State) {
           const mode = parts[1]?.toLowerCase();
           if (!mode || !VALID_PII.includes(mode as any)) {
             return {
-              reply: `Current PII mode: **${state.getPIIMode()}**\nUsage: /warden pii <${VALID_PII.join("|")}>`,
+              text: `Current PII mode: **${state.getPIIMode()}**\nUsage: /warden pii <${VALID_PII.join("|")}>`,
             };
           }
           state.setPIIMode(mode as any);
-          return { reply: `🔒 PII mode set to **${mode}**` };
+          return { text: `🔒 PII mode set to **${mode}**` };
         }
 
         case "reset":
           state.resetStats();
-          return { reply: "📊 Statistics reset." };
+          return { text: "📊 Statistics reset." };
 
         case "help":
           return {
-            reply:
+            text:
               "🛡️ **AI-Warden Commands**\n\n" +
               "`/warden` — Status overview\n" +
               "`/warden layer <name> <block|warn|log|off>` — Set layer policy\n" +
@@ -71,7 +87,7 @@ export function registerCommands(api: any, state: State) {
           };
 
         default:
-          return { reply: `Unknown command. Try /warden help` };
+          return { text: `Unknown command. Try /warden help` };
       }
     },
   });
