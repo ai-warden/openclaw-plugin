@@ -1,0 +1,6 @@
+test-*.ts
+test-results*
+*.log
+.git
+SPEC-v2.md
+tsconfig.json
