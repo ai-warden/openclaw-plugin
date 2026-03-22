@@ -16,7 +16,7 @@
     ]
   },
   "dependencies": {
-    "ai-warden": "^1.1.0"
+    "ai-warden": "^1.1.1"
   },
   "scripts": {
     "test": "echo 'Tests not yet implemented' && exit 0"
