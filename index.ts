@@ -46,7 +46,7 @@ function register(api: any) {
 
   // ── Initialize scanner ──────────────────────────────────────────────
   const scanner = new Scanner(config.apiKey);
-  const state = new State(config);
+  const state = new State(config, api.stateDir);
 
   // ── Register layers ─────────────────────────────────────────────────
   registerLayers(api, scanner, state, config.verbose);

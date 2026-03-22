@@ -55,6 +55,7 @@ export function registerCommands(api: any, state: State) {
         }
 
         case "reset":
+          state.resetStats();
           return { reply: "📊 Statistics reset." };
 
         case "help":
