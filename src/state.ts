@@ -14,12 +14,14 @@ const DEFAULT_LAYERS: Record<LayerName, LayerAction> = {
 interface PersistedState {
   layers: Record<LayerName, LayerAction>;
   piiMode: PIIMode;
+  whitelist?: string[];
 }
 
 export class State {
   private layers: Record<LayerName, LayerAction>;
   private stats: Record<LayerName, LayerStats>;
   private piiMode: PIIMode;
+  private whitelist: string[];
   private hasPromptedUpgrade = false;
   private stateFile: string;
 
@@ -31,6 +33,7 @@ export class State {
     // Start from config defaults
     this.layers = { ...DEFAULT_LAYERS, ...config.layers };
     this.piiMode = config.pii || "mask";
+    this.whitelist = config.whitelist || [".openclaw/workspace/", ".openclaw/agents/"];
 
     // Overlay persisted runtime overrides (from /warden commands)
     this.loadPersistedState();
@@ -51,6 +54,7 @@ export class State {
         }
       }
       if (persisted.piiMode) this.piiMode = persisted.piiMode;
+      if (persisted.whitelist) this.whitelist = persisted.whitelist;
       console.log(`[AI-Warden] Loaded persisted state from ${this.stateFile}`);
     } catch {
       // No persisted state yet — use config defaults
@@ -59,7 +63,7 @@ export class State {
 
   private persistState(): void {
     try {
-      const data: PersistedState = { layers: this.layers, piiMode: this.piiMode };
+      const data: PersistedState = { layers: this.layers, piiMode: this.piiMode, whitelist: this.whitelist };
       mkdirSync(dirname(this.stateFile), { recursive: true });
       writeFileSync(this.stateFile, JSON.stringify(data, null, 2));
     } catch (err: any) {
@@ -94,6 +98,25 @@ export class State {
   setPIIMode(mode: PIIMode): void {
     this.piiMode = mode;
     this.persistState();
+  }
+
+  getWhitelist(): string[] {
+    return [...this.whitelist];
+  }
+
+  addWhitelistPath(path: string): boolean {
+    if (this.whitelist.includes(path)) return false;
+    this.whitelist.push(path);
+    this.persistState();
+    return true;
+  }
+
+  removeWhitelistPath(path: string): boolean {
+    const idx = this.whitelist.indexOf(path);
+    if (idx === -1) return false;
+    this.whitelist.splice(idx, 1);
+    this.persistState();
+    return true;
   }
 
   resetStats(): void {
@@ -139,6 +162,14 @@ export class State {
     }
 
     out += `\nPII Mode: **${this.piiMode}**`;
+    out += `\n\n📋 Whitelist (${this.whitelist.length} paths):`;
+    if (this.whitelist.length === 0) {
+      out += "\n  (none)";
+    } else {
+      for (const p of this.whitelist) {
+        out += `\n  • \`${p}\``;
+      }
+    }
     return out;
   }
 

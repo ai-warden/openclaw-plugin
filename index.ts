@@ -36,6 +36,7 @@ function register(api: any) {
     sensitivity: raw.sensitivity || "balanced",
     autoUpdate: raw.autoUpdate !== false,
     verbose: raw.verbose || false,
+    whitelist: raw.whitelist || [".openclaw/workspace/", ".openclaw/agents/"],
   };
 
   // ── Auto-update ai-warden (disabled during hot-reload) ──────────────

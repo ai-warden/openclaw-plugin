@@ -10,6 +10,7 @@ export interface PluginConfig {
   sensitivity: string;
   autoUpdate: boolean;
   verbose: boolean;
+  whitelist: string[];
 }
 
 export interface ScanResult {
