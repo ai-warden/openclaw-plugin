@@ -1,6 +1,6 @@
 {
   "name": "openclaw-ai-warden",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "AI-Warden prompt injection protection plugin for OpenClaw",
   "license": "MIT",
   "author": "Lars Högberg",
