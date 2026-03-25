@@ -1,5 +1,8 @@
 # smart-calendar-pro
 
+**Author:** Gunnar Pettson  
+**Version:** 1.3.0
+
 AI-powered calendar management for OpenClaw agents. Natural language scheduling, conflict detection, and smart reminders.
 
 ## Features
