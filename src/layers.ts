@@ -10,55 +10,11 @@ function formatFindings(result: ScanResult): string {
 
 export function registerLayers(api: any, scanner: Scanner, state: State, verbose: boolean) {
   // ========================================================================
-  // LAYER 0: Content Validation (SYNC — offline scan only)
-
-  // DEBUG: Also listen on after_tool_call to see if that fires
-  api.on(
-    "after_tool_call",
-    async (event: any, ctx: any) => {
-      console.log("[AI-Warden] DEBUG after_tool_call FIRED! toolName=" + (event.toolName || "unknown") + " keys=" + Object.keys(event).join(","));
-    },
-    { priority: 100 }
-  );
-
-    // ========================================================================
-
-  // MINIMAL TEST: Does a bare sync hook work?
+  // FILE SHIELD (Layer 0): Scans tool results for prompt injection (SYNC)
+  // ========================================================================
   api.on(
     "tool_result_persist",
     (event: any, _ctx: any) => {
-      const toolName = event.toolName || "";
-      if (toolName === "read" || toolName === "web_fetch") {
-        const msg = event.message;
-        const text = Array.isArray(msg?.content)
-          ? msg.content.map((b: any) => b?.text || "").join("\n")
-          : typeof msg?.content === "string" ? msg.content : "";
-        if (text.includes("IGNORE ALL PREVIOUS") || text.includes("Ignore all previous")) {
-          const blocked = {
-            ...msg,
-            content: Array.isArray(msg.content)
-              ? [{ type: "text", text: "⛔ BLOCKED by AI-Warden: prompt injection detected" }]
-              : "⛔ BLOCKED by AI-Warden: prompt injection detected",
-          };
-          const ret = { message: blocked };
-          console.log("[AI-Warden] MINIMAL HOOK: Injection found! Blocking. retType=" + typeof ret + " hasMsg=" + !!ret.message + " isPromise=" + (typeof ret.then === "function") + " msgContentType=" + typeof blocked.content + " isArr=" + Array.isArray(blocked.content));
-          return ret;
-        }
-      }
-      return undefined;
-    },
-    { priority: 200 }
-  );
-
-  console.log("[AI-Warden] Registering Layer 0 hook: tool_result_persist");
-  api.on(
-    "tool_result_persist",
-    function(event: any, ctx: any) {
-      console.log("[AI-Warden] Layer 0 FIRED! toolName=" + (event.toolName || "unknown") + " keys=" + Object.keys(event).join(","));
-      console.log("[AI-Warden] Layer 0 msg keys=" + Object.keys(event.message || {}).join(","));
-      const _rawContent = event.message?.content;
-      console.log("[AI-Warden] Layer 0 content type=" + typeof _rawContent + " isArray=" + Array.isArray(_rawContent));
-      if (typeof _rawContent !== "string") console.log("[AI-Warden] Layer 0 content=" + JSON.stringify(_rawContent)?.substring(0,500));
       if (!state.isEnabled("content")) return;
 
       const contentTools = ["web_fetch", "browser", "read"];
@@ -94,17 +50,16 @@ export function registerLayers(api: any, scanner: Scanner, state: State, verbose
         if (action === "block") {
           state.record("content", "block");
           const blockedText = `⛔ [AI-Warden] Content blocked: prompt injection detected in ${event.toolName} result (${result.riskLevel}, score ${result.riskScore}). Original content was removed for security.`;
-          console.log("[AI-Warden] Layer 0 BLOCKING! Replacing content.");
-          const replacement = {
-            message: {
-              ...msg,
-              content: Array.isArray(msg.content) 
-                ? [{ type: "text", text: blockedText }]
-                : blockedText,
-            },
+          console.log(`${TAG} 🔒 File Shield BLOCKING content`);
+          // Return a NEW message object with blocked content
+          const newMessage = {
+            ...msg,
+            content: Array.isArray(msg.content)
+              ? [{ type: "text", text: blockedText }]
+              : blockedText,
           };
-          console.log("[AI-Warden] Layer 0 return type=" + typeof replacement + " hasMessage=" + !!replacement.message);
-          return replacement;
+          console.log(`${TAG} 🔒 Returning blocked message, content type=${typeof newMessage.content}, isArray=${Array.isArray(newMessage.content)}`);
+          return { message: newMessage };
         } else if (action === "warn") {
           state.record("content", "warn");
           // Can't inject warnings in sync hook — just log
@@ -115,6 +70,58 @@ export function registerLayers(api: any, scanner: Scanner, state: State, verbose
       }
     },
     { name: "ai-warden.content-guard", description: "Scans tool results for prompt injection", priority: 100 }
+  );
+
+  // ========================================================================
+  // FILE SHIELD via before_message_write — ACTUALLY replaces malicious content
+  // This hook runs on the hot path when messages are appended to session.
+  // Returning { message } replaces the content before LLM sees it.
+  // ========================================================================
+  api.on(
+    "before_message_write",
+    (event: any, _ctx: any) => {
+      if (!state.isEnabled("content")) return;
+
+      const msg = event.message;
+      if (msg?.role !== "toolResult" && msg?.role !== "tool") return;
+
+      // toolName might be on different fields
+      const toolName = msg?.toolName || msg?.name || "";
+      const contentTools = ["web_fetch", "browser", "read"];
+      if (!contentTools.includes(toolName)) return;
+
+      let text: string;
+      if (typeof msg?.content === "string") {
+        text = msg.content;
+      } else if (Array.isArray(msg?.content)) {
+        text = msg.content.map((b: any) => b?.text || "").join("\n");
+      } else return;
+
+      if (!text || text.length < 10) return;
+
+      const result = scanner.scan(text);
+
+      if (!result.passed) {
+        const findings = formatFindings(result);
+        const action = state.action("content");
+        console.log(`${TAG} 🚨 before_message_write DETECTED: ${result.riskLevel} (${result.riskScore}) in ${toolName} - ${findings}`);
+
+        if (action === "block") {
+          state.record("content", "block");
+          const blockedText = `⛔ [AI-Warden] Content blocked: prompt injection detected in ${toolName} result (${result.riskLevel}, score ${result.riskScore}). Original content was removed for security.`;
+          console.log(`${TAG} 🔒 before_message_write BLOCKING — replacing message`);
+          return {
+            message: {
+              ...msg,
+              content: Array.isArray(msg.content)
+                ? [{ type: "text", text: blockedText }]
+                : blockedText,
+            },
+          };
+        }
+      }
+    },
+    { name: "ai-warden.content-write-guard", priority: 200 }
   );
 
   // ========================================================================

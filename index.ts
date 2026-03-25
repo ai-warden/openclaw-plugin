@@ -14,7 +14,7 @@ import { registerCommands } from "./src/commands.js";
 import type { PluginConfig, LayerAction } from "./src/types.js";
 
 const TAG = "[AI-Warden]";
-const VERSION = "2.0.0";
+const VERSION = "2.2.0";
 
 function register(api: any) {
   console.log(`${TAG} Plugin v${VERSION} initializing...`);
@@ -36,6 +36,7 @@ function register(api: any) {
     sensitivity: raw.sensitivity || "balanced",
     autoUpdate: raw.autoUpdate !== false,
     verbose: raw.verbose || false,
+    whitelist: raw.whitelist || [".openclaw/workspace/", ".openclaw/agents/"],
   };
 
   // ── Auto-update ai-warden (disabled during hot-reload) ──────────────
