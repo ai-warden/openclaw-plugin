@@ -14,7 +14,7 @@ import { registerCommands } from "./src/commands.js";
 import type { PluginConfig, LayerAction } from "./src/types.js";
 
 const TAG = "[AI-Warden]";
-const VERSION = "2.2.1";
+const VERSION = "2.3.0";
 
 function register(api: any) {
   console.log(`${TAG} Plugin v${VERSION} initializing...`);

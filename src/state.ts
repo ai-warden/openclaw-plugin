@@ -25,6 +25,14 @@ export class State {
   private hasPromptedUpgrade = false;
   private stateFile: string;
 
+  // Detection flags: tool_result_persist sets these so before_prompt_build
+  // can skip API re-scan and inject warning directly (avoids "warning pollution")
+  private detectionFlags: Map<string, { riskLevel: string; riskScore: number; findings: string; timestamp: number }> = new Map();
+
+  // Session contamination: when L0 detects CRITICAL, lock down all dangerous tools
+  private contaminated = false;
+  private contaminationSource = "";
+
   constructor(config: PluginConfig, stateDir?: string) {
     // State file lives next to the plugin or in a provided dir
     const dir = stateDir || join(process.env.HOME || "~", ".openclaw", "state");
@@ -123,6 +131,54 @@ export class State {
     for (const name of Object.keys(DEFAULT_LAYERS) as LayerName[]) {
       this.stats[name] = { scans: 0, blocked: 0, warned: 0 };
     }
+  }
+
+  // --- Detection flag methods ---
+  flagDetection(toolName: string, riskScore: number, riskLevel: string, findings: string): void {
+    const key = `${toolName}-${Date.now()}`;
+    this.detectionFlags.set(key, { riskLevel, riskScore, findings, timestamp: Date.now() });
+    // Clean expired flags (>5 min)
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    for (const [k, v] of this.detectionFlags) {
+      if (v.timestamp < cutoff) this.detectionFlags.delete(k);
+    }
+  }
+
+  getDetectionFlags(): Array<{ riskLevel: string; riskScore: number; findings: string }> {
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    const flags: Array<{ riskLevel: string; riskScore: number; findings: string }> = [];
+    for (const [k, v] of this.detectionFlags) {
+      if (v.timestamp >= cutoff) {
+        flags.push({ riskLevel: v.riskLevel, riskScore: v.riskScore, findings: v.findings });
+      } else {
+        this.detectionFlags.delete(k);
+      }
+    }
+    return flags;
+  }
+
+  clearDetectionFlags(): void {
+    this.detectionFlags.clear();
+  }
+
+  // --- Session contamination methods ---
+  flagContamination(toolName: string, riskScore: number, riskLevel: string): void {
+    if (riskScore < 500) return; // Only CRITICAL triggers lockdown
+    this.contaminated = true;
+    this.contaminationSource = `${toolName} (${riskLevel}, score ${riskScore})`;
+  }
+
+  isContaminated(): boolean {
+    return this.contaminated;
+  }
+
+  getContaminationInfo(): string {
+    return this.contaminationSource;
+  }
+
+  clearContamination(): void {
+    this.contaminated = false;
+    this.contaminationSource = "";
   }
 
   shouldPromptUpgrade(): boolean {
